@@ -75,7 +75,7 @@ export async function checkoutStoreCart(
   const handle = (account?.infinitepay_handle || "").trim();
   if (!handle) return { error: "Essa loja ainda não configurou o pagamento. Fale com o vendedor." };
 
-  const { data: order, error } = await supabase
+  const { data: order, error } = await admin
     .from("store_orders")
     .insert({
       account_id: accountId,
