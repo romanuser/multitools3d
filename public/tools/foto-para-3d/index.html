@@ -86,7 +86,8 @@
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/",
+    "@gradio/client": "https://esm.sh/@gradio/client"
   }
 }
 </script>
@@ -95,6 +96,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { Client } from '@gradio/client';
 
 // ---------------------------------------------------------------------
 // Navegação entre as 3 etapas (abas simples)
@@ -250,22 +252,25 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
 
   let glbUrl;
   try {
-    statusEl.textContent = 'Enviando foto pro servidor (que fala com a IA por trás)...';
-    const body = new FormData();
-    body.append('photo', photoFile);
-    body.append('spaceId', spaceId);
+    statusEl.textContent = 'Conectando ao modelo de IA (pode demorar se estiver "dormindo")...';
+    const client = await Client.connect(spaceId);
 
-    const response = await fetch('/api/photo-to-3d/generate', { method: 'POST', body });
-    const result = await response.json();
+    statusEl.textContent = 'Removendo fundo da imagem...';
+    const preprocess = await client.predict('/preprocess', [photoFile, true, 0.85]);
+    const processedImage = preprocess.data[0];
 
-    if (!response.ok) {
-      statusEl.textContent = result.message || 'Não consegui gerar o modelo. Tente outro espaço.';
-      return;
-    }
-    glbUrl = result.glbUrl;
+    statusEl.textContent = 'Gerando modelo 3D — isso pode levar de 20s a alguns minutos...';
+    const generated = await client.predict('/generate', [processedImage, 96]);
+
+    // O resultado normalmente traz o arquivo OBJ e o GLB (nessa ordem).
+    // Preferimos o GLB — o OBJ desse modelo sai espelhado.
+    const entries = generated.data || [];
+    const glbEntry = entries[1] || entries[0];
+    glbUrl = typeof glbEntry === 'string' ? glbEntry : (glbEntry?.url || glbEntry?.path);
+    if (!glbUrl) throw new Error('O modelo não retornou um arquivo 3D. Tente outro "espaço" na aba Gerar.');
   } catch (err) {
     console.error(err);
-    statusEl.textContent = 'O servidor demorou demais e a conexão caiu (comum quando o "espaço" da IA está dormindo). Tenta de novo — geralmente funciona na segunda tentativa, já que ele fica "acordado".';
+    statusEl.textContent = 'Erro: ' + (err?.message || `Não consegui conectar em "${spaceId}". Tente outro espaço, como hansyan/perflow-triposr.`);
     return;
   }
 
