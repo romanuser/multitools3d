@@ -8,6 +8,43 @@ import { createPrintJobsForOrder } from "./print-integration";
 
 const PRODUCT_LIMIT = 300;
 
+export type ShippingSettingsState = { error?: string; success?: string } | undefined;
+
+export async function saveShippingSettings(
+  _prevState: ShippingSettingsState,
+  formData: FormData
+): Promise<ShippingSettingsState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const originCep = String(formData.get("originCep") || "").replace(/\D/g, "");
+  const weight = Number(formData.get("defaultWeight") || 0) || null;
+  const width = Number(formData.get("defaultWidth") || 0) || null;
+  const height = Number(formData.get("defaultHeight") || 0) || null;
+  const length = Number(formData.get("defaultLength") || 0) || null;
+
+  if (originCep && originCep.length !== 8) return { error: "CEP de origem inválido." };
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({
+      shipping_origin_cep: originCep || null,
+      default_package_weight: weight,
+      default_package_width: width,
+      default_package_height: height,
+      default_package_length: length,
+    })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/loja");
+  return { success: "Configurações de frete salvas." };
+}
+
 export type StoreSettingsState = { error?: string; success?: string } | undefined;
 
 // ---------------------------------------------------------------------
@@ -80,6 +117,10 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
   const printFilamentId = String(formData.get("printFilamentId") || "") || null;
   const printWeightG = formData.get("printWeightG") ? Number(formData.get("printWeightG")) : null;
   const printTimeMin = formData.get("printTimeMin") ? Number(formData.get("printTimeMin")) : null;
+  const shippingWeight = formData.get("shippingWeight") ? Number(formData.get("shippingWeight")) : null;
+  const shippingWidth = formData.get("shippingWidth") ? Number(formData.get("shippingWidth")) : null;
+  const shippingHeight = formData.get("shippingHeight") ? Number(formData.get("shippingHeight")) : null;
+  const shippingLength = formData.get("shippingLength") ? Number(formData.get("shippingLength")) : null;
 
   if (!name) return { error: "Dá um nome pro produto." };
   if (price <= 0) return { error: "Informe um preço válido." };
@@ -115,6 +156,10 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     print_filament_id: string | null;
     print_weight_g: number | null;
     print_time_min: number | null;
+    shipping_weight: number | null;
+    shipping_width: number | null;
+    shipping_height: number | null;
+    shipping_length: number | null;
   } = {
     account_id: user.id,
     name,
@@ -126,6 +171,10 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     print_filament_id: printFilamentId,
     print_weight_g: printWeightG,
     print_time_min: printTimeMin,
+    shipping_weight: shippingWeight,
+    shipping_width: shippingWidth,
+    shipping_height: shippingHeight,
+    shipping_length: shippingLength,
   };
 
   if (!productId) payload.slug = slug;

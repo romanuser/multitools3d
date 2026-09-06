@@ -15,6 +15,10 @@ type Product = {
   print_filament_id: string | null;
   print_weight_g: number | null;
   print_time_min: number | null;
+  shipping_weight: number | null;
+  shipping_width: number | null;
+  shipping_height: number | null;
+  shipping_length: number | null;
 };
 
 type Printer = { id: string; name: string };
@@ -240,6 +244,31 @@ function ProductForm({
               defaultValue={product?.print_time_min ?? ""}
               className="input font-spec"
             />
+          </label>
+        </div>
+      </div>
+
+      <div className="border-t border-line pt-4">
+        <p className="text-sm font-medium text-ink mb-1">Medidas de envio (opcional)</p>
+        <p className="text-xs text-ink-muted mb-3">
+          Se não preencher, a loja usa o "pacote padrão" configurado nas opções de frete.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <label className="block">
+            <span className="block text-xs text-ink-muted mb-1">Peso (kg)</span>
+            <input type="number" step="0.01" name="shippingWeight" defaultValue={product?.shipping_weight ?? ""} className="input font-spec" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-ink-muted mb-1">Largura (cm)</span>
+            <input type="number" name="shippingWidth" defaultValue={product?.shipping_width ?? ""} className="input font-spec" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-ink-muted mb-1">Altura (cm)</span>
+            <input type="number" name="shippingHeight" defaultValue={product?.shipping_height ?? ""} className="input font-spec" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-ink-muted mb-1">Comprimento (cm)</span>
+            <input type="number" name="shippingLength" defaultValue={product?.shipping_length ?? ""} className="input font-spec" />
           </label>
         </div>
       </div>

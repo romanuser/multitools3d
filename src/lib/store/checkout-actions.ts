@@ -23,6 +23,9 @@ export async function checkoutStoreCart(
   const customerName = String(formData.get("customerName") || "").trim();
   const customerEmail = String(formData.get("customerEmail") || "").trim();
   const customerPhone = String(formData.get("customerPhone") || "").trim();
+  const customerAddress = String(formData.get("customerAddress") || "").trim();
+  const shippingPrice = Number(formData.get("shippingPrice") || 0) || 0;
+  const shippingLabel = String(formData.get("shippingLabel") || "").trim();
   const cartJson = String(formData.get("cart") || "[]");
 
   if (!customerName) return { error: "Informe seu nome." };
@@ -82,10 +85,12 @@ export async function checkoutStoreCart(
       customer_name: customerName,
       customer_email: customerEmail,
       customer_phone: customerPhone || null,
+      customer_address: customerAddress || null,
       items,
       subtotal,
-      shipping: 0,
-      total: subtotal,
+      shipping: shippingPrice,
+      shipping_label: shippingLabel || null,
+      total: subtotal + shippingPrice,
       status: "AGUARDANDO_PAGAMENTO",
     })
     .select("id")
@@ -95,13 +100,17 @@ export async function checkoutStoreCart(
 
   let checkoutUrl: string;
   try {
+    const paymentItems = items.map((i) => ({ description: i.description, quantity: i.quantity, price: i.unitPrice }));
+    if (shippingPrice > 0) {
+      paymentItems.push({ description: shippingLabel || "Frete", quantity: 1, price: shippingPrice });
+    }
     checkoutUrl = await createStoreCheckoutLink({
       orderId: order.id,
       handle,
       customerName,
       customerEmail,
       customerPhone,
-      items: items.map((i) => ({ description: i.description, quantity: i.quantity, price: i.unitPrice })),
+      items: paymentItems,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Não consegui gerar o link de pagamento." };

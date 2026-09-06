@@ -3,10 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getAccountPlanStatus, hasFullAccess } from "@/lib/plans/access";
 import { StoreSettingsForm } from "./store-settings-form";
+import { ShippingSettingsForm } from "./shipping-settings-form";
 import { ProductList } from "./product-list";
 import { OrderList } from "./order-list";
 
-export default async function LojaPage() {
+export default async function LojaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ frete?: string; frete_erro?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,16 +21,20 @@ export default async function LojaPage() {
   const { plan } = await getAccountPlanStatus(user.id);
   if (!hasFullAccess(plan)) redirect("/dashboard/plano");
 
+  const { frete, frete_erro } = await searchParams;
+
   const { data: account } = await supabase
     .from("accounts")
-    .select("store_slug, infinitepay_handle, whatsapp_number")
+    .select(
+      "store_slug, infinitepay_handle, whatsapp_number, melhor_envio_access_token, shipping_origin_cep, default_package_weight, default_package_width, default_package_height, default_package_length"
+    )
     .eq("id", user.id)
     .maybeSingle();
 
   const { data: products } = await supabase
     .from("products")
     .select(
-      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min"
+      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min, shipping_weight, shipping_width, shipping_height, shipping_length"
     )
     .eq("account_id", user.id)
     .order("created_at", { ascending: true });
@@ -70,6 +79,22 @@ export default async function LojaPage() {
             initialSlug={account?.store_slug ?? ""}
             initialHandle={account?.infinitepay_handle ?? ""}
             initialWhatsapp={account?.whatsapp_number ?? ""}
+          />
+        </section>
+
+        <section className="mb-10">
+          <h2 className="font-display text-lg text-ink mb-3">Frete automático</h2>
+          {frete === "conectado" && (
+            <p className="text-sm text-good mb-3">Melhor Envio conectado com sucesso!</p>
+          )}
+          {frete_erro && <p className="text-sm text-danger mb-3">{frete_erro}</p>}
+          <ShippingSettingsForm
+            connected={Boolean(account?.melhor_envio_access_token)}
+            initialCep={account?.shipping_origin_cep ?? ""}
+            initialWeight={account?.default_package_weight?.toString() ?? ""}
+            initialWidth={account?.default_package_width?.toString() ?? ""}
+            initialHeight={account?.default_package_height?.toString() ?? ""}
+            initialLength={account?.default_package_length?.toString() ?? ""}
           />
         </section>
 

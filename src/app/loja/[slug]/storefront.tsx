@@ -194,6 +194,49 @@ function CheckoutModal({
   const [state, formAction, pending] = useActionState(checkoutStoreCart, undefined);
   const cartJson = JSON.stringify(items.map((i) => ({ productId: i.product.id, quantity: i.quantity })));
 
+  const [cep, setCep] = useState("");
+  const [quotes, setQuotes] = useState<{ id: number; name: string; company: string; price: number; deliveryTime?: number }[] | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<number | null>(null);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingError, setShippingError] = useState("");
+
+  const shippingPrice = quotes?.find((q) => q.id === selectedQuote)?.price ?? 0;
+  const grandTotal = total + shippingPrice;
+
+  async function calculateShipping() {
+    const digits = cep.replace(/\D/g, "");
+    if (digits.length !== 8) {
+      setShippingError("Digite um CEP válido.");
+      return;
+    }
+    setShippingLoading(true);
+    setShippingError("");
+    setQuotes(null);
+    setSelectedQuote(null);
+
+    try {
+      const response = await fetch("/api/shipping/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId,
+          cep: digits,
+          items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Não foi possível calcular o frete.");
+      setQuotes(result.quotes || []);
+      if (result.quotes?.length) setSelectedQuote(result.quotes[0].id);
+    } catch (err) {
+      setShippingError(err instanceof Error ? err.message : "Erro ao calcular o frete.");
+    } finally {
+      setShippingLoading(false);
+    }
+  }
+
+  const chosenQuote = quotes?.find((q) => q.id === selectedQuote);
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
       <div className="bg-surface border border-line rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -211,15 +254,73 @@ function CheckoutModal({
               <span className="font-spec">{money(product.price * quantity)}</span>
             </div>
           ))}
-          <div className="flex justify-between font-medium text-ink pt-1.5">
-            <span>Total</span>
-            <span className="font-spec text-amber">{money(total)}</span>
+          <div className="flex justify-between text-ink pt-1.5">
+            <span>Subtotal</span>
+            <span className="font-spec">{money(total)}</span>
           </div>
+        </div>
+
+        <div className="mb-4 pb-4 border-b border-line">
+          <p className="text-sm text-ink-muted mb-2">Frete</p>
+          <div className="flex gap-2 mb-2">
+            <input
+              value={cep}
+              onChange={(e) => setCep(e.target.value)}
+              placeholder="Seu CEP"
+              className="input flex-1"
+            />
+            <button
+              type="button"
+              onClick={calculateShipping}
+              disabled={shippingLoading}
+              className="text-sm text-amber border border-amber/40 rounded-full px-4 disabled:opacity-50 shrink-0"
+            >
+              {shippingLoading ? "Calculando…" : "Calcular"}
+            </button>
+          </div>
+          {shippingError && <p className="text-sm text-danger">{shippingError}</p>}
+          {quotes && quotes.length > 0 && (
+            <div className="space-y-1.5">
+              {quotes.map((q) => (
+                <label
+                  key={q.id}
+                  className="flex items-center justify-between text-sm border border-line rounded-lg px-3 py-2 cursor-pointer has-[:checked]:border-amber"
+                >
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="shippingQuote"
+                      checked={selectedQuote === q.id}
+                      onChange={() => setSelectedQuote(q.id)}
+                      className="accent-amber"
+                    />
+                    {q.company} · {q.name}
+                    {q.deliveryTime && <span className="text-ink-muted">· {q.deliveryTime}d</span>}
+                  </span>
+                  <span className="font-spec">{money(q.price)}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          {quotes && quotes.length === 0 && (
+            <p className="text-sm text-ink-muted">Nenhuma opção de frete encontrada pra esse CEP.</p>
+          )}
+        </div>
+
+        <div className="flex justify-between font-medium text-ink mb-4">
+          <span>Total</span>
+          <span className="font-spec text-amber">{money(grandTotal)}</span>
         </div>
 
         <form action={formAction} className="space-y-3">
           <input type="hidden" name="accountId" value={accountId} />
           <input type="hidden" name="cart" value={cartJson} />
+          <input type="hidden" name="shippingPrice" value={shippingPrice} />
+          <input
+            type="hidden"
+            name="shippingLabel"
+            value={chosenQuote ? `${chosenQuote.company} · ${chosenQuote.name}` : ""}
+          />
           <label className="block">
             <span className="block text-sm text-ink-muted mb-1">Seu nome</span>
             <input name="customerName" required className="input" />
@@ -231,6 +332,10 @@ function CheckoutModal({
           <label className="block">
             <span className="block text-sm text-ink-muted mb-1">WhatsApp (opcional)</span>
             <input name="customerPhone" className="input" />
+          </label>
+          <label className="block">
+            <span className="block text-sm text-ink-muted mb-1">Endereço de entrega</span>
+            <textarea name="customerAddress" rows={2} className="input" placeholder="Rua, número, bairro, cidade" />
           </label>
 
           {state?.error && <p className="text-sm text-danger">{state.error}</p>}
