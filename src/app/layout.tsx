@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { AssistantWidget } from "@/components/assistant-widget";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -31,7 +32,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`h-full antialiased ${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-paper text-ink">{children}</body>
+      <body className="min-h-full flex flex-col font-sans bg-paper text-ink">
+        {children}
+        <AssistantWidget />
+      </body>
     </html>
   );
 }

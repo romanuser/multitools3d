@@ -24,9 +24,16 @@ export default async function LojaPage() {
 
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, description, price, stock, active, image_url")
+    .select(
+      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min"
+    )
     .eq("account_id", user.id)
     .order("created_at", { ascending: true });
+
+  const [{ data: printers }, { data: filaments }] = await Promise.all([
+    supabase.from("printers").select("id, name").eq("account_id", user.id),
+    supabase.from("filament_stock").select("id, material, color").eq("account_id", user.id),
+  ]);
 
   const { data: orders } = await supabase
     .from("store_orders")
@@ -71,7 +78,11 @@ export default async function LojaPage() {
             <h2 className="font-display text-lg text-ink">Produtos</h2>
             <span className="text-xs text-ink-muted">{products?.length ?? 0} de 300</span>
           </div>
-          <ProductList products={products ?? []} />
+          <ProductList
+            products={products ?? []}
+            printers={printers ?? []}
+            filaments={(filaments ?? []).map((f) => ({ id: f.id, label: `${f.material} · ${f.color}` }))}
+          />
         </section>
 
         <section className="mt-10">

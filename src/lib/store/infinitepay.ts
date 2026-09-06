@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSiteUrl } from "@/lib/plans/infinitepay";
+import { createPrintJobsForOrder } from "@/lib/store/print-integration";
 
 const API_BASE = "https://api.checkout.infinitepay.io";
 
@@ -88,7 +89,7 @@ export async function confirmStoreOrder(input: { orderId: string; transactionNsu
 
   const { data: order, error: findError } = await admin
     .from("store_orders")
-    .select("id, account_id, total, status")
+    .select("id, account_id, total, status, items")
     .eq("id", input.orderId)
     .maybeSingle();
 
@@ -128,6 +129,8 @@ export async function confirmStoreOrder(input: { orderId: string; transactionNsu
       updated_at: new Date().toISOString(),
     })
     .eq("id", order.id);
+
+  await createPrintJobsForOrder(admin, order.account_id, order.items || []);
 
   return { paid: true };
 }

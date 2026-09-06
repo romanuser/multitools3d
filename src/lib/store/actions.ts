@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { OrderStatus } from "./order-status";
+import { createPrintJobsForOrder } from "./print-integration";
 
 const PRODUCT_LIMIT = 300;
 
@@ -75,6 +76,10 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
   const stock = formData.get("stock") ? Number(formData.get("stock")) : null;
   const active = formData.get("active") === "on";
   const photoFile = formData.get("photo") as File | null;
+  const printPrinterId = String(formData.get("printPrinterId") || "") || null;
+  const printFilamentId = String(formData.get("printFilamentId") || "") || null;
+  const printWeightG = formData.get("printWeightG") ? Number(formData.get("printWeightG")) : null;
+  const printTimeMin = formData.get("printTimeMin") ? Number(formData.get("printTimeMin")) : null;
 
   if (!name) return { error: "Dá um nome pro produto." };
   if (price <= 0) return { error: "Informe um preço válido." };
@@ -106,7 +111,22 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     active: boolean;
     slug?: string;
     image_url?: string;
-  } = { account_id: user.id, name, description: description || null, price, stock, active };
+    print_printer_id: string | null;
+    print_filament_id: string | null;
+    print_weight_g: number | null;
+    print_time_min: number | null;
+  } = {
+    account_id: user.id,
+    name,
+    description: description || null,
+    price,
+    stock,
+    active,
+    print_printer_id: printPrinterId,
+    print_filament_id: printFilamentId,
+    print_weight_g: printWeightG,
+    print_time_min: printTimeMin,
+  };
 
   if (!productId) payload.slug = slug;
 
@@ -166,6 +186,13 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: current } = await supabase
+    .from("store_orders")
+    .select("status, items")
+    .eq("id", orderId)
+    .eq("account_id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("store_orders")
     .update({ status, updated_at: new Date().toISOString() })
@@ -174,7 +201,14 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
 
   if (error) return { error: error.message };
 
+  // Se acabou de virar "pago" agora (não era antes), cria as impressões
+  // na fila automaticamente, seguindo a receita de cada produto.
+  if (status === "PAGAMENTO_CONFIRMADO" && current?.status !== "PAGAMENTO_CONFIRMADO") {
+    await createPrintJobsForOrder(supabase, user.id, current?.items || []);
+  }
+
   revalidatePath("/dashboard/loja");
+  revalidatePath("/dashboard/fila");
   return {};
 }
 

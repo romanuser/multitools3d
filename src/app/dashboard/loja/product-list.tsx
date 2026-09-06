@@ -11,11 +11,26 @@ type Product = {
   stock: number | null;
   active: boolean;
   image_url: string | null;
+  print_printer_id: string | null;
+  print_filament_id: string | null;
+  print_weight_g: number | null;
+  print_time_min: number | null;
 };
+
+type Printer = { id: string; name: string };
+type FilamentOption = { id: string; label: string };
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export function ProductList({ products }: { products: Product[] }) {
+export function ProductList({
+  products,
+  printers,
+  filaments,
+}: {
+  products: Product[];
+  printers: Printer[];
+  filaments: FilamentOption[];
+}) {
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -79,7 +94,13 @@ export function ProductList({ products }: { products: Product[] }) {
       )}
 
       {showForm && (
-        <ProductForm key={editing?.id ?? "new"} product={editing} onDone={() => setShowForm(false)} />
+        <ProductForm
+          key={editing?.id ?? "new"}
+          product={editing}
+          printers={printers}
+          filaments={filaments}
+          onDone={() => setShowForm(false)}
+        />
       )}
     </div>
   );
@@ -105,7 +126,17 @@ function DeleteButton({ productId }: { productId: string }) {
   );
 }
 
-function ProductForm({ product, onDone }: { product: Product | null; onDone: () => void }) {
+function ProductForm({
+  product,
+  printers,
+  filaments,
+  onDone,
+}: {
+  product: Product | null;
+  printers: Printer[];
+  filaments: FilamentOption[];
+  onDone: () => void;
+}) {
   const [state, formAction, pending] = useActionState(saveProduct, undefined);
   const [preview, setPreview] = useState<string | null>(product?.image_url ?? null);
 
@@ -160,6 +191,58 @@ function ProductForm({ product, onDone }: { product: Product | null; onDone: () 
         <input type="checkbox" name="active" defaultChecked={product?.active ?? true} className="accent-amber" />
         Visível na loja
       </label>
+
+      <div className="border-t border-line pt-4">
+        <p className="text-sm font-medium text-ink mb-1">Receita de impressão (opcional)</p>
+        <p className="text-xs text-ink-muted mb-3">
+          Se preencher isso, toda vez que um pedido desse produto for pago, a impressão entra
+          sozinha na fila.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="block text-sm text-ink-muted mb-1">Impressora</span>
+            <select name="printPrinterId" defaultValue={product?.print_printer_id ?? ""} className="input">
+              <option value="">Nenhuma (não entra na fila sozinho)</option>
+              {printers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-sm text-ink-muted mb-1">Filamento</span>
+            <select name="printFilamentId" defaultValue={product?.print_filament_id ?? ""} className="input">
+              <option value="">Selecione…</option>
+              {filaments.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-sm text-ink-muted mb-1">Gramagem por unidade</span>
+            <input
+              type="number"
+              name="printWeightG"
+              min="1"
+              defaultValue={product?.print_weight_g ?? ""}
+              className="input font-spec"
+            />
+          </label>
+          <label className="block">
+            <span className="block text-sm text-ink-muted mb-1">Tempo estimado (min, opcional)</span>
+            <input
+              type="number"
+              name="printTimeMin"
+              min="0"
+              defaultValue={product?.print_time_min ?? ""}
+              className="input font-spec"
+            />
+          </label>
+        </div>
+      </div>
 
       {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       <div className="flex gap-3">
