@@ -67,9 +67,11 @@
 
     <div id="panelGenerate" style="display:none">
       <h2>Gerar modelo</h2>
-      <label>Espaço do modelo (Hugging Face)</label>
-      <input id="spaceId" value="stabilityai/TripoSR">
-      <div class="hint">Se der erro de "espaço fora do ar", tente outro, por exemplo: <code>hansyan/perflow-triposr</code></div>
+      <label>Versão do modelo (Replicate)</label>
+      <input id="modelVersion" placeholder="cole aqui a versão do modelo">
+      <div class="hint">
+        Pegue em <a href="https://replicate.com/aryamansital/instant_mesh/api" target="_blank" style="color:#93c5fd">replicate.com/aryamansital/instant_mesh</a>, aba "API" — copie o texto depois de "instant_mesh:" (só a versão, sem o nome do modelo).
+      </div>
       <button class="primary" id="generateBtn" style="margin-top:14px">Gerar modelo 3D</button>
       <div class="status" id="status"></div>
       <button id="downloadBtn" style="margin-top:10px; display:none">Baixar STL</button>
@@ -86,8 +88,7 @@
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/",
-    "@gradio/client": "https://esm.sh/@gradio/client"
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
   }
 }
 </script>
@@ -95,8 +96,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
-import { Client } from '@gradio/client';
 
 // ---------------------------------------------------------------------
 // Navegação entre as 3 etapas (abas simples)
@@ -243,43 +244,81 @@ function animate() {
 }
 animate();
 
+function fileToDataUri(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function pollPrediction(id, onTick) {
+  const started = Date.now();
+  while (Date.now() - started < 3 * 60 * 1000) { // desiste depois de 3 minutos
+    const res = await fetch(`/api/photo-to-3d/replicate/status?id=${id}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Erro ao consultar andamento.');
+    onTick(data.status);
+    if (data.status === 'succeeded') return data.output;
+    if (data.status === 'failed' || data.status === 'canceled') {
+      throw new Error(data.error || 'A geração falhou no Replicate.');
+    }
+    await sleep(3000);
+  }
+  throw new Error('Demorou demais (mais de 3 minutos). Tente de novo.');
+}
+
+function extractModelUrl(output) {
+  const candidates = Array.isArray(output) ? output : [output];
+  const flat = candidates.flatMap((c) => (typeof c === 'object' && c ? Object.values(c) : [c]));
+  const glb = flat.find((v) => typeof v === 'string' && v.toLowerCase().endsWith('.glb'));
+  const obj = flat.find((v) => typeof v === 'string' && v.toLowerCase().endsWith('.obj'));
+  return { url: glb || obj || flat.find((v) => typeof v === 'string'), isObj: !glb && !!obj };
+}
+
 document.getElementById('generateBtn').addEventListener('click', async () => {
   if (!photoFile) { statusEl.textContent = 'Envie uma foto primeiro.'; return; }
-  const spaceId = document.getElementById('spaceId').value.trim();
+  const version = document.getElementById('modelVersion').value.trim();
+  if (!version) { statusEl.textContent = 'Cole a versão do modelo (veja a dica acima).'; return; }
   const downloadBtn = document.getElementById('downloadBtn');
   downloadBtn.style.display = 'none';
   resize();
 
-  let glbUrl;
+  let modelInfo;
   try {
-    statusEl.textContent = 'Conectando ao modelo de IA (pode demorar se estiver "dormindo")...';
-    const client = await Client.connect(spaceId);
+    statusEl.textContent = 'Enviando foto...';
+    const imageDataUri = await fileToDataUri(photoFile);
 
-    statusEl.textContent = 'Removendo fundo da imagem...';
-    const preprocess = await client.predict('/preprocess', [photoFile, true, 0.85]);
-    const processedImage = preprocess.data[0];
+    const startRes = await fetch('/api/photo-to-3d/replicate/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageDataUri, version }),
+    });
+    const startData = await startRes.json();
+    if (!startRes.ok) throw new Error(startData.message || 'Não consegui iniciar a geração.');
 
-    statusEl.textContent = 'Gerando modelo 3D — isso pode levar de 20s a alguns minutos...';
-    const generated = await client.predict('/generate', [processedImage, 96]);
+    statusEl.textContent = 'Gerando modelo 3D...';
+    const output = await pollPrediction(startData.id, (status) => {
+      statusEl.textContent = `Gerando modelo 3D... (${status})`;
+    });
 
-    // O resultado normalmente traz o arquivo OBJ e o GLB (nessa ordem).
-    // Preferimos o GLB — o OBJ desse modelo sai espelhado.
-    const entries = generated.data || [];
-    const glbEntry = entries[1] || entries[0];
-    glbUrl = typeof glbEntry === 'string' ? glbEntry : (glbEntry?.url || glbEntry?.path);
-    if (!glbUrl) throw new Error('O modelo não retornou um arquivo 3D. Tente outro "espaço" na aba Gerar.');
+    modelInfo = extractModelUrl(output);
+    if (!modelInfo.url) throw new Error('Não recebi um arquivo 3D de volta. Confira a versão do modelo.');
   } catch (err) {
     console.error(err);
-    statusEl.textContent = 'Erro: ' + (err?.message || `Não consegui conectar em "${spaceId}". Tente outro espaço, como hansyan/perflow-triposr.`);
+    statusEl.textContent = 'Erro: ' + (err?.message || 'não consegui gerar o modelo.');
     return;
   }
 
   try {
     statusEl.textContent = 'Carregando modelo na cena...';
-    const loader = new GLTFLoader();
-    loader.load(glbUrl, (gltf) => {
+    const loader = modelInfo.isObj ? new OBJLoader() : new GLTFLoader();
+    loader.load(modelInfo.url, (result) => {
       if (currentModel) scene.remove(currentModel);
-      currentModel = gltf.scene;
+      currentModel = modelInfo.isObj ? result : result.scene;
 
       // Escala automática usando a medida calculada na Etapa 2.
       const box = new THREE.Box3().setFromObject(currentModel);
@@ -300,11 +339,11 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
       downloadBtn.style.display = 'block';
     }, undefined, (err) => {
       console.error(err);
-      statusEl.textContent = 'Não consegui carregar o modelo gerado (formato ou CORS). Tente outro espaço.';
+      statusEl.textContent = 'Não consegui carregar o modelo gerado (formato inesperado).';
     });
   } catch (err) {
     console.error(err);
-    statusEl.textContent = 'Erro: ' + (err?.message || 'não consegui gerar o modelo. Tente outro "espaço" acima.');
+    statusEl.textContent = 'Erro: ' + (err?.message || 'não consegui carregar o modelo.');
   }
 });
 
