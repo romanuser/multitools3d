@@ -2,6 +2,13 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSiteUrl } from "@/lib/plans/infinitepay";
 
+export async function getPlatformMelhorEnvioAccountId(): Promise<string> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("accounts").select("id").eq("is_admin", true).limit(1).maybeSingle();
+  if (!data) throw new Error("Nenhuma conta administradora encontrada pra usar o frete.");
+  return data.id;
+}
+
 export function melhorEnvioBaseUrl() {
   return process.env.MELHOR_ENVIO_SANDBOX === "true"
     ? "https://sandbox.melhorenvio.com.br"

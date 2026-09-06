@@ -7,11 +7,7 @@ import { ShippingSettingsForm } from "./shipping-settings-form";
 import { ProductList } from "./product-list";
 import { OrderList } from "./order-list";
 
-export default async function LojaPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ frete?: string; frete_erro?: string }>;
-}) {
+export default async function LojaPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,12 +17,10 @@ export default async function LojaPage({
   const { plan } = await getAccountPlanStatus(user.id);
   if (!hasFullAccess(plan)) redirect("/dashboard/plano");
 
-  const { frete, frete_erro } = await searchParams;
-
   const { data: account } = await supabase
     .from("accounts")
     .select(
-      "store_slug, infinitepay_handle, whatsapp_number, melhor_envio_access_token, shipping_origin_cep, default_package_weight, default_package_width, default_package_height, default_package_length"
+      "store_slug, infinitepay_handle, whatsapp_number, shipping_origin_cep, default_package_weight, default_package_width, default_package_height, default_package_length"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -50,6 +44,22 @@ export default async function LojaPage({
     .eq("account_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);
+
+  const { data: messages } = orders?.length
+    ? await supabase
+        .from("order_messages")
+        .select("id, order_id, sender_role, sender_name, text, created_at")
+        .in(
+          "order_id",
+          orders.map((o) => o.id)
+        )
+        .order("created_at", { ascending: true })
+    : { data: [] };
+
+  const ordersWithMessages = (orders ?? []).map((order) => ({
+    ...order,
+    messages: (messages ?? []).filter((m) => m.order_id === order.id),
+  }));
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -84,12 +94,11 @@ export default async function LojaPage({
 
         <section className="mb-10">
           <h2 className="font-display text-lg text-ink mb-3">Frete automático</h2>
-          {frete === "conectado" && (
-            <p className="text-sm text-good mb-3">Melhor Envio conectado com sucesso!</p>
-          )}
-          {frete_erro && <p className="text-sm text-danger mb-3">{frete_erro}</p>}
+          <p className="text-sm text-ink-muted mb-3">
+            O cálculo é feito pela plataforma — você só precisa informar de onde envia e as
+            medidas padrão da embalagem.
+          </p>
           <ShippingSettingsForm
-            connected={Boolean(account?.melhor_envio_access_token)}
             initialCep={account?.shipping_origin_cep ?? ""}
             initialWeight={account?.default_package_weight?.toString() ?? ""}
             initialWidth={account?.default_package_width?.toString() ?? ""}
@@ -112,7 +121,7 @@ export default async function LojaPage({
 
         <section className="mt-10">
           <h2 className="font-display text-lg text-ink mb-3">Pedidos recebidos</h2>
-          <OrderList orders={orders ?? []} />
+          <OrderList orders={ordersWithMessages} />
         </section>
       </div>
     </main>

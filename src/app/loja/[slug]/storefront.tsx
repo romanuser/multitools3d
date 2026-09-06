@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { checkoutStoreCart } from "@/lib/store/checkout-actions";
+import { StoreHeader } from "./store-header";
 
 type Product = {
   id: string;
@@ -16,14 +17,18 @@ const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curr
 
 export function Storefront({
   accountId,
+  storeSlug,
   companyName,
   logoUrl,
   products,
+  customerEmail,
 }: {
   accountId: string;
+  storeSlug: string;
   companyName: string;
   logoUrl: string | null;
   products: Product[];
+  customerEmail: string | null;
 }) {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [showCheckout, setShowCheckout] = useState(false);
@@ -57,24 +62,10 @@ export function Storefront({
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <main className="min-h-screen bg-paper px-6 py-10">
-      <div className="max-w-4xl mx-auto">
-        <header className="flex items-center justify-between gap-4 mb-10">
-          <div className="flex items-center gap-4">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="" className="w-16 h-16 rounded-full object-cover border border-line" />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-amber-soft border border-line flex items-center justify-center font-display text-xl text-amber">
-                {companyName.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <h1 className="font-display text-3xl text-ink">{companyName}</h1>
-          </div>
-          <a href="/loja/conta" className="text-sm text-ink-muted hover:text-ink shrink-0">
-            Meus pedidos
-          </a>
-        </header>
+    <main className="min-h-screen bg-paper">
+      <StoreHeader storeSlug={storeSlug} companyName={companyName} logoUrl={logoUrl} customerEmail={customerEmail} />
+      <div className="max-w-4xl mx-auto px-6 py-10">
+        <div id="produtos" />
 
         {products.length === 0 ? (
           <p className="text-sm text-ink-muted">Essa loja ainda não tem produtos disponíveis.</p>

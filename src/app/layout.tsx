@@ -1,25 +1,6 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AssistantWidget } from "@/components/assistant-widget";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  axes: ["opsz", "SOFT", "WONK"],
-});
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-plex-sans",
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-plex-mono",
-});
 
 export const metadata: Metadata = {
   title: "Multiferramenta 3D",
@@ -28,10 +9,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="pt-BR"
-      className={`h-full antialiased ${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}
-    >
+    <html lang="pt-BR" className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans bg-paper text-ink">
         {children}
         <AssistantWidget />

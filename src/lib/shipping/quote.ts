@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchMelhorEnvio } from "./melhor-envio-oauth";
+import { fetchMelhorEnvio, getPlatformMelhorEnvioAccountId } from "./melhor-envio-oauth";
 
 export type ShippingQuote = {
   id: number;
@@ -77,7 +77,8 @@ export async function quoteShipping(
     };
   });
 
-  const response = await fetchMelhorEnvio(accountId, "/api/v2/me/shipment/calculate", {
+  const platformAccountId = await getPlatformMelhorEnvioAccountId();
+  const response = await fetchMelhorEnvio(platformAccountId, "/api/v2/me/shipment/calculate", {
     method: "POST",
     body: JSON.stringify({
       from: { postal_code: originCep },

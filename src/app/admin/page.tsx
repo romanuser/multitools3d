@@ -4,7 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { AdminAccountRow } from "./admin-account-row";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ frete?: string; frete_erro?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,11 +18,13 @@ export default async function AdminPage() {
 
   const { data: me } = await supabase
     .from("accounts")
-    .select("is_admin")
+    .select("is_admin, melhor_envio_access_token")
     .eq("id", user.id)
     .maybeSingle();
 
   if (!me?.is_admin) redirect("/dashboard");
+
+  const { frete, frete_erro } = await searchParams;
 
   const admin = createAdminClient();
   const { data: accounts } = await admin
@@ -39,7 +45,7 @@ export default async function AdminPage() {
           aqui — útil pra pagamentos combinados por fora, cortesias ou correções.
         </p>
 
-        <div className="border border-line rounded-2xl overflow-hidden">
+        <div className="border border-line rounded-2xl overflow-hidden mb-10">
           <div className="grid grid-cols-[1fr_auto] gap-4 px-5 py-3 text-xs text-ink-muted border-b border-line bg-surface">
             <span>Conta</span>
             <span>Plano</span>
@@ -48,6 +54,33 @@ export default async function AdminPage() {
             <AdminAccountRow key={account.id} account={account} />
           ))}
         </div>
+
+        <section>
+          <h2 className="font-display text-lg text-ink mb-1">Frete (Melhor Envio)</h2>
+          <p className="text-sm text-ink-muted mb-3">
+            Conecte a sua conta Melhor Envio aqui — ela é usada pra calcular o frete de{" "}
+            <strong>todas as lojas</strong> dos assinantes automaticamente. Cada lojista só
+            configura o próprio CEP de origem e pacote padrão.
+          </p>
+          {frete === "conectado" && <p className="text-sm text-good mb-3">Conectado com sucesso!</p>}
+          {frete_erro && <p className="text-sm text-danger mb-3">{frete_erro}</p>}
+          <div className="border border-line bg-surface rounded-2xl p-6 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-medium text-ink">Conta Melhor Envio da plataforma</p>
+              <p className="text-xs text-ink-muted">
+                {me.melhor_envio_access_token ? "Conectada" : "Ainda não conectada"}
+              </p>
+            </div>
+            <a
+              href="/api/melhor-envio/connect"
+              className={`text-sm font-medium rounded-full px-4 py-2 ${
+                me.melhor_envio_access_token ? "border border-line text-ink-muted hover:text-ink" : "bg-amber text-white"
+              }`}
+            >
+              {me.melhor_envio_access_token ? "Reconectar" : "Conectar Melhor Envio"}
+            </a>
+          </div>
+        </section>
       </div>
     </main>
   );

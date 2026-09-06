@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const oauthError = params.get("error");
   const oauthErrorDescription = params.get("error_description");
 
-  const destination = new URL("/dashboard/loja", process.env.NEXT_PUBLIC_SITE_URL);
+  const destination = new URL("/admin", process.env.NEXT_PUBLIC_SITE_URL);
 
   if (!code || !accountId) {
     const detail = oauthErrorDescription || oauthError;

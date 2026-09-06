@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { signOut } from "@/lib/auth/actions";
+import { OrderTimeline } from "@/components/order-timeline";
+import { OrderChat } from "@/components/order-chat";
 
 const STATUS_LABELS: Record<string, string> = {
   AGUARDANDO_PAGAMENTO: "Aguardando pagamento",
@@ -24,25 +25,33 @@ export default async function ContaPage() {
 
   if (!user || !user.email) redirect("/loja/conta/entrar");
 
-  // Usa o cliente admin porque a política de "store_orders" só deixa o
-  // DONO da loja (account_id = auth.uid()) ler os pedidos — o cliente que
-  // comprou não é dono de loja nenhuma. O filtro por e-mail aqui usa o
-  // e-mail JÁ VERIFICADO pelo login por link mágico, então é seguro.
-  const admin = createAdminClient();
-  const { data: orders } = await admin
+  // Graças à política de RLS "store_orders_customer_select", o cliente
+  // já consegue ler os próprios pedidos com o cliente normal — sem
+  // precisar de nenhum privilégio especial.
+  const { data: orders } = await supabase
     .from("store_orders")
     .select("id, account_id, items, total, status, created_at")
-    .ilike("customer_email", user.email)
     .order("created_at", { ascending: false });
 
   const accountIds = [...new Set((orders ?? []).map((o) => o.account_id))];
   const { data: accounts } = accountIds.length
-    ? await admin.from("accounts").select("id, company_name, store_slug").in("id", accountIds)
+    ? await supabase.from("accounts").select("id, company_name, store_slug").in("id", accountIds)
     : { data: [] };
 
-  const storeName = (accountId: string) =>
-    accounts?.find((a) => a.id === accountId)?.company_name || "Loja";
+  const { data: allMessages } = orders?.length
+    ? await supabase
+        .from("order_messages")
+        .select("id, order_id, sender_role, sender_name, text, created_at")
+        .in(
+          "order_id",
+          orders.map((o) => o.id)
+        )
+        .order("created_at", { ascending: true })
+    : { data: [] };
+
+  const storeName = (accountId: string) => accounts?.find((a) => a.id === accountId)?.company_name || "Loja";
   const storeSlug = (accountId: string) => accounts?.find((a) => a.id === accountId)?.store_slug;
+  const messagesFor = (orderId: string) => (allMessages ?? []).filter((m) => m.order_id === orderId);
 
   return (
     <main className="min-h-screen bg-paper px-6 py-12">
@@ -64,10 +73,10 @@ export default async function ContaPage() {
             Nenhum pedido encontrado com esse e-mail ainda.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {orders.map((order) => (
-              <div key={order.id} className="border border-line bg-surface rounded-2xl p-4">
-                <div className="flex items-start justify-between gap-3">
+              <div key={order.id} className="border border-line bg-surface rounded-2xl p-5">
+                <div className="flex items-start justify-between gap-3 mb-4">
                   <div>
                     <p className="text-sm font-medium text-ink">{storeName(order.account_id)}</p>
                     <p className="text-xs text-ink-muted">
@@ -76,14 +85,24 @@ export default async function ContaPage() {
                   </div>
                   <p className="text-sm font-spec text-ink">{money(order.total)}</p>
                 </div>
-                <div className="mt-2 space-y-0.5">
+
+                <div className="mb-4 space-y-0.5">
                   {((order.items as OrderItem[]) || []).map((item, i) => (
                     <p key={i} className="text-xs text-ink-muted">
                       {item.quantity}x {item.description}
                     </p>
                   ))}
                 </div>
-                <div className="mt-3 pt-3 border-t border-line flex items-center justify-between">
+
+                <div className="mb-4 overflow-x-auto">
+                  <div className="min-w-[420px]">
+                    <OrderTimeline status={order.status} />
+                  </div>
+                </div>
+
+                <OrderChat orderId={order.id} initialMessages={messagesFor(order.id)} role="cliente" />
+
+                <div className="mt-3 flex items-center justify-between">
                   <span
                     className={`text-xs font-medium ${
                       order.status === "PAGAMENTO_CONFIRMADO" ? "text-good" : "text-ink-muted"

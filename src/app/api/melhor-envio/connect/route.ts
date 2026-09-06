@@ -15,7 +15,7 @@ export async function GET() {
     return NextResponse.redirect(url);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao conectar.";
-    const destination = new URL("/dashboard/loja", process.env.NEXT_PUBLIC_SITE_URL);
+    const destination = new URL("/admin", process.env.NEXT_PUBLIC_SITE_URL);
     destination.searchParams.set("frete_erro", message);
     return NextResponse.redirect(destination);
   }

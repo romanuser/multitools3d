@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { updateOrderStatus, deleteOrder } from "@/lib/store/actions";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/store/order-status";
+import { OrderTimeline } from "@/components/order-timeline";
+import { OrderChat } from "@/components/order-chat";
 
 type OrderItem = { description: string; quantity: number; unit_price: number; total: number };
+type OrderMessage = { id: string; sender_role: "cliente" | "lojista"; sender_name: string; text: string; created_at: string };
 type Order = {
   id: string;
   customer_name: string;
@@ -14,6 +17,7 @@ type Order = {
   total: number;
   status: string;
   created_at: string;
+  messages: OrderMessage[];
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -48,6 +52,7 @@ export function OrderList({ orders }: { orders: Order[] }) {
 function OrderRow({ order }: { order: Order }) {
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState(order.status);
+  const [expanded, setExpanded] = useState(false);
 
   async function onStatusChange(newStatus: OrderStatus) {
     setPending(true);
@@ -107,15 +112,35 @@ function OrderRow({ order }: { order: Order }) {
             </option>
           ))}
         </select>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={pending}
-          className="text-xs text-danger hover:underline underline-offset-2 disabled:opacity-50"
-        >
-          Apagar pedido
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-amber hover:underline underline-offset-2"
+          >
+            {expanded ? "Ocultar detalhes" : "Ver detalhes e conversar"}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={pending}
+            className="text-xs text-danger hover:underline underline-offset-2 disabled:opacity-50"
+          >
+            Apagar pedido
+          </button>
+        </div>
       </div>
+
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-line space-y-4">
+          <div className="overflow-x-auto">
+            <div className="min-w-[420px]">
+              <OrderTimeline status={status} />
+            </div>
+          </div>
+          <OrderChat orderId={order.id} initialMessages={order.messages} role="lojista" />
+        </div>
+      )}
     </div>
   );
 }

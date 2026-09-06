@@ -10,19 +10,24 @@ export default async function LojaPublicaPage({ params }: { params: Promise<{ sl
   if (!store) notFound();
 
   const supabase = await createClient();
-  const { data: products } = await supabase
-    .from("products")
-    .select("id, name, description, price, stock, image_url")
-    .eq("account_id", store.id)
-    .eq("active", true)
-    .order("created_at", { ascending: true });
+  const [{ data: products }, { data: userData }] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, name, description, price, stock, image_url")
+      .eq("account_id", store.id)
+      .eq("active", true)
+      .order("created_at", { ascending: true }),
+    supabase.auth.getUser(),
+  ]);
 
   return (
     <Storefront
       accountId={store.id}
+      storeSlug={slug}
       companyName={store.companyName || "Loja"}
       logoUrl={store.logoUrl}
       products={products ?? []}
+      customerEmail={userData.user?.email ?? null}
     />
   );
 }
