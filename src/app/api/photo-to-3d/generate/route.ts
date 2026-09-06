@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const preprocess = await client.predict("/preprocess", [photo, true, 0.85]);
     const processedImage = (preprocess.data as unknown[])?.[0];
 
-    const generated = await client.predict("/generate", [processedImage, 256]);
+    const generated = await client.predict("/generate", [processedImage, 96]);
     const entries = (generated.data || []) as unknown[];
     const glbEntry = (entries[1] ?? entries[0]) as { url?: string; path?: string } | string | undefined;
 

@@ -265,7 +265,7 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
     glbUrl = result.glbUrl;
   } catch (err) {
     console.error(err);
-    statusEl.textContent = 'Erro de conexão com o servidor. Tente de novo em instantes.';
+    statusEl.textContent = 'O servidor demorou demais e a conexão caiu (comum quando o "espaço" da IA está dormindo). Tenta de novo — geralmente funciona na segunda tentativa, já que ele fica "acordado".';
     return;
   }
 
