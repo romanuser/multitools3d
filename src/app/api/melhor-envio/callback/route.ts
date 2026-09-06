@@ -5,11 +5,17 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const code = params.get("code");
   const accountId = params.get("state");
+  const oauthError = params.get("error");
+  const oauthErrorDescription = params.get("error_description");
 
   const destination = new URL("/dashboard/loja", process.env.NEXT_PUBLIC_SITE_URL);
 
   if (!code || !accountId) {
-    destination.searchParams.set("frete_erro", "Resposta incompleta do Melhor Envio.");
+    const detail = oauthErrorDescription || oauthError;
+    destination.searchParams.set(
+      "frete_erro",
+      detail ? `Melhor Envio recusou a conexão: ${detail}` : "Resposta incompleta do Melhor Envio (sem código de autorização)."
+    );
     return NextResponse.redirect(destination);
   }
 

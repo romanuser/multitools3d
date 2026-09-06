@@ -35,7 +35,7 @@ export function buildAuthorizeUrl(accountId: string) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "shipping-calculate shipping-services",
+    scope: "shipping-calculate",
     state: accountId,
   });
   return `${melhorEnvioBaseUrl()}/oauth/authorize?${params.toString()}`;
