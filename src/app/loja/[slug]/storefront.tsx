@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { checkoutStoreCart } from "@/lib/store/checkout-actions";
 import { StoreHeader } from "./store-header";
+import { StoreAssistantWidget } from "./store-assistant-widget";
 
 type Product = {
   id: string;
@@ -110,6 +111,12 @@ export function Storefront({
           />
         )}
       </div>
+
+      <StoreAssistantWidget
+        products={products.map((p) => ({ id: p.id, name: p.name, price: p.price }))}
+        customerEmail={customerEmail}
+        onAddToCart={addToCart}
+      />
     </main>
   );
 }

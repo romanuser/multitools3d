@@ -21,6 +21,7 @@ export type AssistantIntent =
   | { type: "register" }
   | { type: "add_printer"; name: string }
   | { type: "add_filament"; grams: number; material: string; color: string }
+  | { type: "add_product_start" }
   | { type: "unknown" };
 
 function extractAmountGrams(text: string): number | null {
@@ -77,6 +78,10 @@ export function parseIntent(raw: string): AssistantIntent {
         color: extractColor(text) || "Sem cor definida",
       };
     }
+  }
+
+  if (/produto/.test(text) && /cadastr\w*|adicion\w*|nov[ao]|criar/.test(text)) {
+    return { type: "add_product_start" };
   }
 
   return { type: "unknown" };

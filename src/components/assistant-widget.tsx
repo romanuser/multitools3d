@@ -1,21 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { runAssistantCommand } from "@/lib/assistant/actions";
+import { useRouter, usePathname } from "next/navigation";
+import { runAssistantCommand, type PendingState } from "@/lib/assistant/actions";
 
 type Message = { role: "user" | "assistant"; text: string };
 
 export function AssistantWidget() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: 'Oi! Eu posso cadastrar impressora, adicionar filamento ao estoque, ou te levar pro cadastro. Tenta: "cadastrar impressora Ender 3".',
+      text: 'Oi! Eu posso cadastrar impressora, adicionar filamento ao estoque, cadastrar um produto, ou te levar pro cadastro. Tenta: "cadastrar impressora Ender 3".',
     },
   ]);
   const [input, setInput] = useState("");
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<PendingState>(null);
+  const [busy, setBusy] = useState(false);
   const router = useRouter();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -23,16 +25,21 @@ export function AssistantWidget() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
 
+  // A loja pública tem o próprio assistente (mexe no carrinho do
+  // visitante), então esse aqui não aparece lá pra não duplicar.
+  if (pathname?.startsWith("/loja")) return null;
+
   async function send() {
     const text = input.trim();
-    if (!text || pending) return;
+    if (!text || busy) return;
     setMessages((m) => [...m, { role: "user", text }]);
     setInput("");
-    setPending(true);
+    setBusy(true);
 
-    const result = await runAssistantCommand(text);
+    const result = await runAssistantCommand(text, pending);
     setMessages((m) => [...m, { role: "assistant", text: result.reply }]);
-    setPending(false);
+    setPending(result.pending ?? null);
+    setBusy(false);
 
     if (result.refresh) router.refresh();
     if (result.redirectTo) setTimeout(() => router.push(result.redirectTo!), 600);
@@ -60,7 +67,7 @@ export function AssistantWidget() {
                 </span>
               </div>
             ))}
-            {pending && <p className="text-xs text-ink-muted">digitando…</p>}
+            {busy && <p className="text-xs text-ink-muted">digitando…</p>}
             <div ref={bottomRef} />
           </div>
           <div className="p-3 border-t border-line flex gap-2">
@@ -73,7 +80,7 @@ export function AssistantWidget() {
             />
             <button
               onClick={send}
-              disabled={pending}
+              disabled={busy}
               className="bg-amber text-white text-sm font-medium rounded-full px-4 disabled:opacity-50"
             >
               ↑
