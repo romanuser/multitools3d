@@ -43,7 +43,7 @@ export default async function Home() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-4xl mx-auto px-6 pt-12 pb-20 text-center">
+      <section className="max-w-4xl mx-auto px-6 pt-12 pb-16 text-center">
         <p className="text-sm text-amber font-medium mb-3">
           Pra quem vive de impressão 3D
         </p>
@@ -54,7 +54,7 @@ export default async function Home() {
           Orçamento, estoque de filamento, impressoras, fila de impressão e sua própria loja
           virtual — tudo num painel só, sem planilha e sem calculadora na mão.
         </p>
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 mb-14">
           <Link
             href="/cadastro"
             className="bg-amber text-white font-medium rounded-full px-6 py-3 hover:opacity-90 transition-opacity"
@@ -65,6 +65,7 @@ export default async function Home() {
             Já tenho conta →
           </Link>
         </div>
+        <BrowserFrame src="/marketing/painel-geral.png" alt="Painel geral do Multiferramenta 3D" />
       </section>
 
       {/* Free features */}
@@ -98,13 +99,25 @@ export default async function Home() {
               precisar anotar nada.
             </p>
           </div>
-          <div className="border border-line bg-surface rounded-2xl p-6">
-            <p className="text-xs text-ink-muted mb-2">Fila de impressão</p>
-            <p className="text-ink font-medium mb-3">Suporte de celular</p>
-            <div className="h-1.5 rounded-full bg-paper overflow-hidden mb-2">
-              <div className="h-full rounded-full bg-amber" style={{ width: "72%" }} />
-            </div>
-            <p className="text-xs text-ink-muted font-spec">12 min restantes</p>
+          <BrowserFrame src="/marketing/fila-impressao.png" alt="Fila de impressão com custo e lucro calculados automaticamente" />
+        </div>
+      </section>
+
+      {/* 3D tools */}
+      <section className="max-w-5xl mx-auto px-6 py-16 border-t border-line">
+        <div className="grid sm:grid-cols-2 gap-8 items-center">
+          <div className="sm:order-2">
+            <h2 className="font-display text-2xl text-ink mb-3">
+              Ferramentas 3D direto no navegador
+            </h2>
+            <p className="text-ink-muted">
+              Gere um texto curvado pra gravar numa caneca ou monte uma peça simples no
+              modelador — arrastando com o mouse — e exporte o STL na hora. Sem instalar
+              programa nenhum.
+            </p>
+          </div>
+          <div className="sm:order-1">
+            <BrowserFrame src="/marketing/stl-curvo.png" alt="Gerador de texto curvo em STL, rodando no navegador" />
           </div>
         </div>
       </section>
@@ -170,5 +183,19 @@ export default async function Home() {
         Multiferramenta 3D
       </footer>
     </main>
+  );
+}
+
+function BrowserFrame({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-line bg-surface shadow-2xl shadow-black/40">
+      <div className="flex items-center gap-1.5 px-4 py-3 border-b border-line">
+        <span className="w-2.5 h-2.5 rounded-full bg-danger/60" />
+        <span className="w-2.5 h-2.5 rounded-full bg-amber/60" />
+        <span className="w-2.5 h-2.5 rounded-full bg-good/60" />
+      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className="w-full h-auto block" />
+    </div>
   );
 }
