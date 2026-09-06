@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #15171d;
-  --surface: #1c1f27;
-  --surface-raised: #242833;
-  --ink: #edeee8;
-  --ink-muted: #8d919c;
-  --line: #2b2f3a;
-  --amber: #f0a63d;
-  --amber-soft: #3a2c17;
-  --good: #5fbf88;
-  --danger: #e2665a;
+  --paper: #101215;
+  --surface: #17191d;
+  --surface-raised: #1f2227;
+  --ink: #e7e9ec;
+  --ink-muted: #8a8f98;
+  --line: #262a30;
+  --amber: #2ecc71;
+  --amber-soft: #16261c;
+  --good: #2ecc71;
+  --danger: #ef4444;
 }
 
 @theme inline {
@@ -25,7 +25,7 @@
   --color-good: var(--good);
   --color-danger: var(--danger);
   --font-sans: var(--font-plex-sans);
-  --font-display: var(--font-fraunces);
+  --font-display: var(--font-plex-sans);
   --font-spec: var(--font-plex-mono);
 }
 
@@ -50,5 +50,5 @@ body {
 
 .input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(240, 166, 61, 0.35);
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.35);
 }
