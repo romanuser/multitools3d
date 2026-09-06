@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #15171d;
+  --surface: #1c1f27;
+  --surface-raised: #242833;
+  --ink: #edeee8;
+  --ink-muted: #8d919c;
+  --line: #2b2f3a;
+  --amber: #f0a63d;
+  --amber-soft: #3a2c17;
+  --good: #5fbf88;
+  --danger: #e2665a;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-good: var(--good);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-plex-sans);
+  --font-display: var(--font-fraunces);
+  --font-spec: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.5rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(240, 166, 61, 0.35);
+}

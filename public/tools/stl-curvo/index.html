@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RomanLab3D · Gerador STL Curvado</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #111827; color: #f9fafb; }
+    .app { display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; }
+    aside { padding: 20px; background: #0f172a; border-right: 1px solid #334155; overflow-y: auto; }
+    h1 { margin-top: 0; font-size: 22px; }
+    label { display: block; margin-top: 14px; font-size: 13px; color: #cbd5e1; }
+    input, select, button { width: 100%; margin-top: 6px; padding: 10px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; }
+    input[type="range"] { padding: 0; }
+    .row { display: grid; grid-template-columns: 1fr 90px; gap: 8px; align-items: center; }
+    .value { text-align: center; background: #0b1220; padding: 8px; border-radius: 8px; border: 1px solid #334155; }
+    button { cursor: pointer; font-weight: 700; border: 0; background: #2563eb; margin-top: 16px; }
+    button.secondary { background: #334155; }
+    .hint { font-size: 12px; line-height: 1.45; color: #94a3b8; margin-top: 16px; }
+    #viewer { width: 100%; height: 100vh; display: block; }
+    .status { margin-top: 12px; font-size: 12px; color: #93c5fd; min-height: 32px; }
+    @media (max-width: 800px) {
+      .app { grid-template-columns: 1fr; }
+      #viewer { height: 58vh; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>RomanLab3D · Gerador STL Curvado</h1>
+    <div class="hint" style="margin-top:-8px">Crie nomes curvados para copos, canecas e porta-latas e exporte em STL.</div>
+
+    <label>Texto</label>
+    <input id="text" value="RAFAEL" maxlength="30" />
+
+    <label>Fonte</label>
+    <select id="fontPreset">
+      <option value="helvetikerBold" selected>Helvetiker Bold</option>
+      <option value="helvetiker">Helvetiker Regular</option>
+      <option value="optimer">Optimer Regular</option>
+      <option value="optimerBold">Optimer Bold</option>
+      <option value="gentilis">Gentilis Regular</option>
+      <option value="gentilisBold">Gentilis Bold</option>
+      <option value="droidSans">Droid Sans</option>
+      <option value="custom">Carregar arquivo .TTF/.OTF</option>
+    </select>
+    <input id="fontFile" type="file" accept=".ttf,.otf" style="display:none" />
+
+    <label>Largura total do texto (mm)</label>
+    <div class="row"><input id="width" type="range" min="10" max="160" step="1" value="30"><div class="value" id="widthVal">30</div></div>
+
+    <label>Altura aproximada (mm)</label>
+    <div class="row"><input id="height" type="range" min="3" max="50" step="1" value="6"><div class="value" id="heightVal">6</div></div>
+
+    <label>Profundidade / extrusão (mm)</label>
+    <div class="row"><input id="depth" type="range" min="0.4" max="10" step="0.1" value="3.0"><div class="value" id="depthVal">3.0</div></div>
+
+    <label>Reforço do traço (mm)</label>
+    <div class="row"><input id="stroke" type="range" min="0" max="1.6" step="0.1" value="0.4"><div class="value" id="strokeVal">0.4</div></div>
+    <div class="hint" style="margin-top:6px">Engrossa as letras sem alterar a largura total escolhida. Para bico de 0,4 mm, teste entre <b>0,3 e 0,6 mm</b>.</div>
+
+    <label>Raio da curvatura (mm)</label>
+    <div class="row"><input id="radius" type="range" min="20" max="250" step="1" value="42"><div class="value" id="radiusVal">42</div></div>
+
+    <label>Sentido da curva</label>
+    <select id="curveDirection">
+      <option value="convex">Convexo — acompanha lado externo do copo</option>
+      <option value="concave">Côncavo — invertido</option>
+    </select>
+
+    <label>Qualidade da malha</label>
+    <select id="quality">
+      <option value="4">Rápida</option>
+      <option value="8">Média</option>
+      <option value="14" selected>Alta</option>
+      <option value="24">Ultra</option>
+    </select>
+
+    <button id="generate">Atualizar modelo</button>
+    <button id="download">Baixar STL</button>
+    <button id="resetView" class="secondary">Centralizar visualização</button>
+
+    <div class="status" id="status">Carregando fonte...</div>
+    <div class="hint">
+      Para gravar no copo: exporte o texto, importe no fatiador junto com o copo e defina o texto como <b>peça negativa</b>. Para vazamento completo, use profundidade maior que a parede. O reforço do traço ajuda letras pequenas a serem fatiadas corretamente.
+    </div>
+  </aside>
+  <canvas id="viewer"></canvas>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TTFLoader } from 'three/addons/loaders/TTFLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+
+const canvas = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x111827);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
+camera.position.set(90, 70, 110);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.target.set(0, 0, 0);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 2.2));
+const key = new THREE.DirectionalLight(0xffffff, 2.5);
+key.position.set(80, 120, 100);
+scene.add(key);
+
+const grid = new THREE.GridHelper(250, 25, 0x475569, 0x273449);
+grid.rotation.x = Math.PI / 2;
+grid.position.z = -8;
+scene.add(grid);
+
+let textMesh = null;
+let activeFont = null;
+let customFontName = '';
+
+const presetUrls = {
+  helvetiker: 'https://cdn.jsdelivr.net/npm/three@0.166.1/examples/fonts/helvetiker_regular.typeface.json',
+  helvetikerBold: 'https://cdn.jsdelivr.net/npm/three@0.166.1/examples/fonts/helvetiker_bold.typeface.json',
+  optimer: 'https://cdn.jsdelivr.net/npm/three@0.166.1/examples/fonts/optimer_regular.typeface.json',
+  optimerBold: 'https://cdn.jsdelivr.net/npm/three@0.166.1/examples/fonts/optimer_bold.typeface.json',
+  gentilis: 'https://cdn.jsdelivr.net/npm/three@0.166.1/examples/fonts/gentilis_regular.typeface.json',
+  gentilisBold: 'https://cdn.jsdelivr.net/npm/three@0.166.1/examples/fonts/gentilis_bold.typeface.json',
+  droidSans: 'https://cdn.jsdelivr.net/npm/three@0.166.1/examples/fonts/droid/droid_sans_regular.typeface.json'
+};
+
+const ids = ['width','height','depth','stroke','radius'];
+for (const id of ids) {
+  const el = document.getElementById(id);
+  const val = document.getElementById(id+'Val');
+  el.addEventListener('input', () => val.textContent = Number(el.value).toFixed((id==='depth'||id==='stroke')?1:0));
+}
+
+function resize() {
+  const parent = canvas.parentElement;
+  const w = parent.clientWidth - (window.innerWidth <= 800 ? 0 : 340);
+  const h = window.innerWidth <= 800 ? window.innerHeight * .58 : window.innerHeight;
+  renderer.setSize(Math.max(320,w), h, false);
+  camera.aspect = Math.max(320,w) / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+function disposeMesh(mesh) {
+  if (!mesh) return;
+  mesh.geometry.dispose();
+  mesh.material.dispose();
+  scene.remove(mesh);
+}
+
+function bendGeometry(geometry, radius, direction) {
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  const centerX = (box.min.x + box.max.x) / 2;
+  const sign = direction === 'convex' ? 1 : -1;
+  const pos = geometry.attributes.position;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) - centerX;
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const angle = x / radius;
+
+    const radial = radius + sign * z;
+    const nx = Math.sin(angle) * radial;
+    const nz = sign * (radius - Math.cos(angle) * radial);
+
+    pos.setXYZ(i, nx, y, nz);
+  }
+  pos.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.center();
+  return geometry;
+}
+
+function createReinforcedGeometry(text, options, reinforcement) {
+  const offsets = [[0, 0]];
+  if (reinforcement > 0) {
+    const rings = Math.max(1, Math.ceil(reinforcement / 0.25));
+    for (let ring = 1; ring <= rings; ring++) {
+      const r = reinforcement * ring / rings;
+      const points = Math.max(8, ring * 8);
+      for (let i = 0; i < points; i++) {
+        const a = (i / points) * Math.PI * 2;
+        offsets.push([Math.cos(a) * r, Math.sin(a) * r]);
+      }
+    }
+  }
+
+  const geometries = offsets.map(([ox, oy]) => {
+    const g = new TextGeometry(text, options);
+    g.translate(ox, oy, 0);
+    return g.toNonIndexed();
+  });
+
+  if (geometries.length === 1) return geometries[0];
+
+  let totalVertices = 0;
+  for (const g of geometries) totalVertices += g.attributes.position.count;
+  const positions = new Float32Array(totalVertices * 3);
+  const normals = new Float32Array(totalVertices * 3);
+  let vertexOffset = 0;
+
+  for (const g of geometries) {
+    positions.set(g.attributes.position.array, vertexOffset * 3);
+    if (g.attributes.normal) normals.set(g.attributes.normal.array, vertexOffset * 3);
+    vertexOffset += g.attributes.position.count;
+    g.dispose();
+  }
+
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  merged.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  merged.computeVertexNormals();
+  return merged;
+}
+
+function makeModel() {
+  if (!activeFont) return;
+  const status = document.getElementById('status');
+  const text = document.getElementById('text').value.trim() || 'TEXTO';
+  const targetWidth = Number(document.getElementById('width').value);
+  const targetHeight = Number(document.getElementById('height').value);
+  const depth = Number(document.getElementById('depth').value);
+  const stroke = Number(document.getElementById('stroke').value);
+  const radius = Number(document.getElementById('radius').value);
+  const curveDirection = document.getElementById('curveDirection').value;
+  const curveSegments = Number(document.getElementById('quality').value);
+
+  disposeMesh(textMesh);
+
+  let geometry = createReinforcedGeometry(text, {
+    font: activeFont,
+    size: 10,
+    depth,
+    curveSegments,
+    bevelEnabled: false
+  }, stroke);
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  const rawW = box.max.x - box.min.x;
+  const rawH = box.max.y - box.min.y;
+  const sx = targetWidth / rawW;
+  const sy = targetHeight / rawH;
+  geometry.scale(sx, sy, 1);
+  geometry = bendGeometry(geometry, radius, curveDirection);
+
+  const material = new THREE.MeshStandardMaterial({ color: 0x60a5fa, metalness: 0.05, roughness: 0.55, side: THREE.DoubleSide });
+  textMesh = new THREE.Mesh(geometry, material);
+  scene.add(textMesh);
+
+  const finalBox = new THREE.Box3().setFromObject(textMesh);
+  const size = new THREE.Vector3();
+  finalBox.getSize(size);
+  status.textContent = `Modelo pronto: ${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm — reforço ${stroke.toFixed(1)} mm${customFontName ? ' — ' + customFontName : ''}`;
+}
+
+function loadPreset(name) {
+  document.getElementById('status').textContent = 'Carregando fonte...';
+  new FontLoader().load(presetUrls[name], font => {
+    activeFont = font;
+    customFontName = '';
+    makeModel();
+  }, undefined, err => {
+    console.error(err);
+    document.getElementById('status').textContent = 'Erro ao carregar a fonte.';
+  });
+}
+
+const fontPreset = document.getElementById('fontPreset');
+const fontFile = document.getElementById('fontFile');
+fontPreset.addEventListener('change', () => {
+  if (fontPreset.value === 'custom') fontFile.click();
+  else loadPreset(fontPreset.value);
+});
+
+fontFile.addEventListener('change', async () => {
+  const file = fontFile.files?.[0];
+  if (!file) return;
+  try {
+    const buffer = await file.arrayBuffer();
+    const json = new TTFLoader().parse(buffer);
+    activeFont = new FontLoader().parse(json);
+    customFontName = file.name;
+    makeModel();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('status').textContent = 'Não foi possível abrir essa fonte. Use TTF ou OTF válido.';
+  }
+});
+
+document.getElementById('generate').addEventListener('click', makeModel);
+document.getElementById('text').addEventListener('keydown', e => { if (e.key === 'Enter') makeModel(); });
+
+document.getElementById('download').addEventListener('click', () => {
+  if (!textMesh) return;
+  const exporter = new STLExporter();
+  const data = exporter.parse(textMesh, { binary: true });
+  const blob = new Blob([data], { type: 'model/stl' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const safe = (document.getElementById('text').value || 'texto').replace(/[^a-z0-9_-]+/gi,'_');
+  a.download = `${safe}_curvado.stl`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+document.getElementById('resetView').addEventListener('click', () => {
+  camera.position.set(90, 70, 110);
+  controls.target.set(0,0,0);
+  controls.update();
+});
+
+function animate() {
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+loadPreset('helvetikerBold');
+</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Multiferramenta 3D · Modelador</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; background: #111827; color: #f9fafb; }
+  .app { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+  aside { padding: 18px; background: #0f172a; border-right: 1px solid #334155; overflow-y: auto; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; margin: 20px 0 8px; }
+  label { display: block; margin-top: 10px; font-size: 12px; color: #cbd5e1; }
+  input, select, button { width: 100%; margin-top: 5px; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; font-size: 13px; }
+  button { cursor: pointer; font-weight: 700; border: 0; background: #334155; }
+  .add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .add-grid button { background: #2563eb; margin-top: 0; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .list-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; margin-top: 6px; background: #1e293b; cursor: pointer; font-size: 13px; }
+  .list-item.active { outline: 2px solid #2563eb; }
+  .list-item button { width: auto; background: transparent; color: #f87171; padding: 2px 8px; margin: 0; font-weight: 400; }
+  .hint { font-size: 11.5px; line-height: 1.4; color: #94a3b8; margin-top: 6px; }
+  .primary { background: #2563eb; margin-top: 18px; }
+  .danger { background: #b91c1c; }
+  #viewer { width: 100%; height: 100vh; display: block; }
+  .toggle-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .toggle-row input { width: auto; margin: 0; }
+  .empty { font-size: 12px; color: #64748b; margin-top: 8px; }
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; }
+    #viewer { height: 58vh; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Modelador 3D</h1>
+    <div class="hint">Monte formas simples, arraste com o mouse pra posicionar sobre a mesa de referência e exporte um STL único pra fatiar.</div>
+
+    <h2>Adicionar</h2>
+    <div class="add-grid">
+      <button id="addBox">+ Cubo</button>
+      <button id="addCylinder">+ Cilindro</button>
+      <button id="addSphere">+ Esfera</button>
+    </div>
+
+    <h2>Mesa de referência</h2>
+    <div class="toggle-row">
+      <input type="checkbox" id="bedVisible" checked />
+      <label style="margin:0">Mostrar mesa</label>
+    </div>
+    <label>Tamanho da mesa</label>
+    <select id="bedPreset">
+      <option value="220">Ender 3 · 220 x 220 mm</option>
+      <option value="180">Bambu A1 mini · 180 x 180 mm</option>
+      <option value="256" selected>Bambu A1 / X1C · 256 x 256 mm</option>
+      <option value="300">Mesa grande · 300 x 300 mm</option>
+    </select>
+    <div class="hint">A mesa é só uma referência visual — nunca entra no arquivo STL exportado.</div>
+
+    <h2>Peças na cena</h2>
+    <div id="objectList"></div>
+    <div class="empty" id="emptyHint">Nenhuma peça ainda. Adicione um cubo, cilindro ou esfera acima.</div>
+
+    <div id="editPanel"></div>
+
+    <button class="primary" id="download">Baixar STL</button>
+    <div class="status" id="status" style="font-size:12px;color:#93c5fd;margin-top:10px;"></div>
+  </aside>
+  <canvas id="viewer"></canvas>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const canvas = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x111827);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
+camera.position.set(180, 160, 220);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 2.2));
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(120, 200, 150);
+scene.add(key);
+
+let bedSize = 256;
+let bedGroup = new THREE.Group();
+scene.add(bedGroup);
+
+function rebuildBed() {
+  bedGroup.clear();
+  const grid = new THREE.GridHelper(bedSize, Math.max(4, Math.round(bedSize / 20)), 0x475569, 0x273449);
+  bedGroup.add(grid);
+  const plateGeo = new THREE.BoxGeometry(bedSize, 1, bedSize);
+  const plateMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, transparent: true, opacity: 0.4 });
+  const plate = new THREE.Mesh(plateGeo, plateMat);
+  plate.position.y = -0.5;
+  bedGroup.add(plate);
+}
+rebuildBed();
+
+document.getElementById('bedVisible').addEventListener('change', (e) => {
+  bedGroup.visible = e.target.checked;
+});
+document.getElementById('bedPreset').addEventListener('change', (e) => {
+  bedSize = Number(e.target.value);
+  rebuildBed();
+  bedGroup.visible = document.getElementById('bedVisible').checked;
+});
+
+let objects = [];
+let selectedId = null;
+let nextId = 1;
+
+function makeGeometry(obj) {
+  if (obj.type === 'box') return new THREE.BoxGeometry(obj.params.w, obj.params.h, obj.params.d);
+  if (obj.type === 'cylinder') return new THREE.CylinderGeometry(obj.params.r, obj.params.r, obj.params.h, 32);
+  return new THREE.SphereGeometry(obj.params.r, 24, 16);
+}
+
+function refreshMesh(obj) {
+  if (obj.mesh) {
+    scene.remove(obj.mesh);
+    obj.mesh.geometry.dispose();
+    obj.mesh.material.dispose();
+  }
+  const geometry = makeGeometry(obj);
+  const material = new THREE.MeshStandardMaterial({ color: obj.color, metalness: 0.05, roughness: 0.6 });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
+  mesh.rotation.y = (obj.rotationY * Math.PI) / 180;
+  scene.add(mesh);
+  obj.mesh = mesh;
+}
+
+function updateTransform(obj) {
+  obj.mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
+  obj.mesh.rotation.y = (obj.rotationY * Math.PI) / 180;
+}
+
+function addObject(type) {
+  const defaults = {
+    box: { w: 20, h: 20, d: 20 },
+    cylinder: { r: 10, h: 20 },
+    sphere: { r: 10 },
+  };
+  const colors = [0x60a5fa, 0xf59e0b, 0x34d399, 0xf472b6, 0xa78bfa];
+  const obj = {
+    id: nextId++,
+    type,
+    params: { ...defaults[type] },
+    position: { x: 0, y: type === 'sphere' ? defaults.sphere.r : (defaults[type].h || 20) / 2, z: 0 },
+    rotationY: 0,
+    color: colors[objects.length % colors.length],
+  };
+  objects.push(obj);
+  refreshMesh(obj);
+  selectedId = obj.id;
+  renderList();
+}
+
+function deleteObject(id) {
+  const obj = objects.find((o) => o.id === id);
+  if (!obj) return;
+  scene.remove(obj.mesh);
+  obj.mesh.geometry.dispose();
+  obj.mesh.material.dispose();
+  objects = objects.filter((o) => o.id !== id);
+  if (selectedId === id) selectedId = objects.length ? objects[objects.length - 1].id : null;
+  renderList();
+}
+
+const TYPE_LABEL = { box: 'Cubo', cylinder: 'Cilindro', sphere: 'Esfera' };
+
+function renderList() {
+  const list = document.getElementById('objectList');
+  const empty = document.getElementById('emptyHint');
+  list.innerHTML = '';
+  empty.style.display = objects.length ? 'none' : 'block';
+  objects.forEach((obj) => {
+    const item = document.createElement('div');
+    item.className = 'list-item' + (obj.id === selectedId ? ' active' : '');
+    item.innerHTML = `<span>${TYPE_LABEL[obj.type]} #${obj.id}</span>`;
+    const del = document.createElement('button');
+    del.textContent = '×';
+    del.onclick = (e) => { e.stopPropagation(); deleteObject(obj.id); };
+    item.appendChild(del);
+    item.addEventListener('click', () => { selectedId = obj.id; renderList(); });
+    list.appendChild(item);
+  });
+  renderEditPanel();
+}
+
+function numberField(label, value, step, onChange) {
+  const wrap = document.createElement('label');
+  wrap.textContent = label;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = step;
+  input.value = value;
+  input.addEventListener('input', () => onChange(Number(input.value)));
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function renderEditPanel() {
+  const panel = document.getElementById('editPanel');
+  panel.innerHTML = '';
+  const obj = objects.find((o) => o.id === selectedId);
+  if (!obj) return;
+
+  const h2 = document.createElement('h2');
+  h2.textContent = `Editar ${TYPE_LABEL[obj.type]} #${obj.id}`;
+  panel.appendChild(h2);
+
+  if (obj.type === 'box') {
+    panel.appendChild(numberField('Largura (mm)', obj.params.w, 1, (v) => { obj.params.w = Math.max(1, v); refreshMesh(obj); }));
+    panel.appendChild(numberField('Altura (mm)', obj.params.h, 1, (v) => { obj.params.h = Math.max(1, v); refreshMesh(obj); }));
+    panel.appendChild(numberField('Profundidade (mm)', obj.params.d, 1, (v) => { obj.params.d = Math.max(1, v); refreshMesh(obj); }));
+  } else if (obj.type === 'cylinder') {
+    panel.appendChild(numberField('Raio (mm)', obj.params.r, 0.5, (v) => { obj.params.r = Math.max(0.5, v); refreshMesh(obj); }));
+    panel.appendChild(numberField('Altura (mm)', obj.params.h, 1, (v) => { obj.params.h = Math.max(1, v); refreshMesh(obj); }));
+  } else {
+    panel.appendChild(numberField('Raio (mm)', obj.params.r, 0.5, (v) => { obj.params.r = Math.max(0.5, v); refreshMesh(obj); }));
+  }
+
+  const posLabel = document.createElement('label');
+  posLabel.textContent = 'Posição (X, Y, Z em mm)';
+  panel.appendChild(posLabel);
+  const row = document.createElement('div');
+  row.className = 'row3';
+  ['x', 'y', 'z'].forEach((axis) => {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = 1;
+    input.value = obj.position[axis];
+    input.addEventListener('input', () => {
+      obj.position[axis] = Number(input.value);
+      updateTransform(obj);
+    });
+    row.appendChild(input);
+  });
+  panel.appendChild(row);
+
+  panel.appendChild(numberField('Rotação Y (graus)', obj.rotationY, 5, (v) => { obj.rotationY = v; updateTransform(obj); }));
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'danger';
+  delBtn.style.marginTop = '14px';
+  delBtn.textContent = 'Apagar essa peça';
+  delBtn.onclick = () => deleteObject(obj.id);
+  panel.appendChild(delBtn);
+}
+
+document.getElementById('addBox').addEventListener('click', () => addObject('box'));
+document.getElementById('addCylinder').addEventListener('click', () => addObject('cylinder'));
+document.getElementById('addSphere').addEventListener('click', () => addObject('sphere'));
+
+// ---------------------------------------------------------------------
+// Arrastar peças com o mouse: clica numa peça e arrasta pra mover ela
+// sobre o plano da mesa (X/Z). A altura (Y) continua ajustável só pelo
+// campo numérico, pra não perder precisão vertical no arraste.
+// ---------------------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let dragging = null;
+
+function pointerToNDC(event) {
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+}
+
+canvas.addEventListener('pointerdown', (event) => {
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(objects.map((o) => o.mesh), false);
+  if (!hits.length) return;
+
+  const obj = objects.find((o) => o.mesh === hits[0].object);
+  selectedId = obj.id;
+  renderList();
+
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -obj.position.y);
+  const point = new THREE.Vector3();
+  raycaster.ray.intersectPlane(plane, point);
+  dragging = {
+    obj,
+    plane,
+    offsetX: obj.position.x - (point.x || 0),
+    offsetZ: obj.position.z - (point.z || 0),
+  };
+  controls.enabled = false;
+  canvas.setPointerCapture(event.pointerId);
+  canvas.style.cursor = 'grabbing';
+});
+
+canvas.addEventListener('pointermove', (event) => {
+  if (!dragging) return;
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const point = new THREE.Vector3();
+  if (raycaster.ray.intersectPlane(dragging.plane, point)) {
+    dragging.obj.position.x = point.x + dragging.offsetX;
+    dragging.obj.position.z = point.z + dragging.offsetZ;
+    updateTransform(dragging.obj);
+  }
+});
+
+function endDrag() {
+  if (!dragging) return;
+  dragging = null;
+  controls.enabled = true;
+  canvas.style.cursor = 'auto';
+  renderEditPanel();
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointerleave', endDrag);
+
+document.getElementById('download').addEventListener('click', () => {
+  const status = document.getElementById('status');
+  if (!objects.length) {
+    status.textContent = 'Adicione ao menos uma peça antes de exportar.';
+    return;
+  }
+  const geometries = objects.map((obj) => {
+    const g = obj.mesh.geometry.clone();
+    obj.mesh.updateMatrixWorld(true);
+    g.applyMatrix4(obj.mesh.matrixWorld);
+    return g;
+  });
+  const merged = geometries.length > 1 ? mergeGeometries(geometries, false) : geometries[0];
+  const tempMesh = new THREE.Mesh(merged);
+  const exporter = new STLExporter();
+  const data = exporter.parse(tempMesh, { binary: true });
+  const blob = new Blob([data], { type: 'model/stl' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'modelo.stl';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  status.textContent = `STL exportado com ${objects.length} peça(s).`;
+});
+
+function resize() {
+  const parent = canvas.parentElement;
+  const w = window.innerWidth <= 800 ? window.innerWidth : window.innerWidth - 320;
+  const h = window.innerWidth <= 800 ? window.innerHeight * 0.58 : window.innerHeight;
+  renderer.setSize(Math.max(320, w), h, false);
+  camera.aspect = Math.max(320, w) / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+function animate() {
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+renderList();
+</script>
+</body>
+</html>
