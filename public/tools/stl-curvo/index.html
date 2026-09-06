@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RomanLab3D · Gerador STL Curvado</title>
+  <title>Multiferramenta 3D · Gerador de Texto STL</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -30,7 +30,7 @@
 <body>
 <div class="app">
   <aside>
-    <h1>RomanLab3D · Gerador STL Curvado</h1>
+    <h1>Multiferramenta 3D · Gerador de Texto STL</h1>
     <div class="hint" style="margin-top:-8px">Crie nomes curvados para copos, canecas e porta-latas e exporte em STL.</div>
 
     <label>Texto</label>
@@ -62,11 +62,14 @@
     <div class="row"><input id="stroke" type="range" min="0" max="1.6" step="0.1" value="0.4"><div class="value" id="strokeVal">0.4</div></div>
     <div class="hint" style="margin-top:6px">Engrossa as letras sem alterar a largura total escolhida. Para bico de 0,4 mm, teste entre <b>0,3 e 0,6 mm</b>.</div>
 
-    <label>Raio da curvatura (mm)</label>
-    <div class="row"><input id="radius" type="range" min="20" max="250" step="1" value="42"><div class="value" id="radiusVal">42</div></div>
+    <div id="radiusBlock">
+      <label>Raio da curvatura (mm)</label>
+      <div class="row"><input id="radius" type="range" min="20" max="250" step="1" value="42"><div class="value" id="radiusVal">42</div></div>
+    </div>
 
     <label>Sentido da curva</label>
     <select id="curveDirection">
+      <option value="flat">Plano — sem curvatura</option>
       <option value="convex">Convexo — acompanha lado externo do copo</option>
       <option value="concave">Côncavo — invertido</option>
     </select>
@@ -161,6 +164,10 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
+
+document.getElementById('curveDirection').addEventListener('change', (e) => {
+  document.getElementById('radiusBlock').style.display = e.target.value === 'flat' ? 'none' : 'block';
+});
 resize();
 
 function disposeMesh(mesh) {
@@ -266,7 +273,12 @@ function makeModel() {
   const sx = targetWidth / rawW;
   const sy = targetHeight / rawH;
   geometry.scale(sx, sy, 1);
-  geometry = bendGeometry(geometry, radius, curveDirection);
+  if (curveDirection !== 'flat') {
+    geometry = bendGeometry(geometry, radius, curveDirection);
+  } else {
+    geometry.computeVertexNormals();
+    geometry.center();
+  }
 
   const material = new THREE.MeshStandardMaterial({ color: 0x60a5fa, metalness: 0.05, roughness: 0.55, side: THREE.DoubleSide });
   textMesh = new THREE.Mesh(geometry, material);

@@ -64,7 +64,7 @@ export default async function PlanoPage({
           <p className="text-sm text-ink-muted mb-4">R$ 29,90/mês</p>
           <ul className="space-y-1.5 text-sm text-ink mb-5">
             <li className="flex gap-2">
-              <span className="text-amber">✓</span> Geradores STL curvo e Foto → STL
+              <span className="text-amber">✓</span> Gerador de texto STL e Foto → STL
             </li>
             <li className="flex gap-2">
               <span className="text-amber">✓</span> Loja virtual própria (até 300 produtos)

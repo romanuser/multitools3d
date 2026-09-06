@@ -31,8 +31,9 @@ export function DashboardSidebar({
     { href: "/dashboard/estoque", label: "Estoque", icon: "▤" },
     { href: "/dashboard/impressoras", label: "Impressoras", icon: "⎔" },
     { href: "/dashboard/fila", label: "Fila de impressão", icon: "▶" },
-    { href: "/dashboard/gerador-stl-curvo", label: "STL curvo", icon: "✎" },
+    { href: "/dashboard/gerador-stl-curvo", label: "Gerador de texto STL", icon: "✎" },
     { href: "/dashboard/modelador-3d", label: "Modelador 3D", icon: "◱" },
+    { href: "/dashboard/foto-para-3d", label: "Foto → Modelo 3D", icon: "◐" },
   ];
 
   const vipItems: NavItem[] = [{ href: "/dashboard/loja", label: "Loja virtual", icon: "◈", locked: !hasVip }];

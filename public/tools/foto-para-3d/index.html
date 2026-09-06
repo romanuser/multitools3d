@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Multiferramenta 3D · Foto para Modelo 3D</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; background: #111827; color: #f9fafb; }
+  .app { display: grid; grid-template-columns: 360px 1fr; min-height: 100vh; }
+  aside { padding: 18px; background: #0f172a; border-right: 1px solid #334155; overflow-y: auto; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; margin: 20px 0 8px; }
+  label { display: block; margin-top: 10px; font-size: 12px; color: #cbd5e1; }
+  input, select, button { width: 100%; margin-top: 5px; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: white; font-size: 13px; }
+  button { cursor: pointer; font-weight: 700; border: 0; background: #334155; }
+  .primary { background: #16a34a; }
+  .step { border: 1px solid #334155; border-radius: 10px; padding: 12px; margin-top: 10px; }
+  .step.done { border-color: #16a34a; }
+  .step.active { border-color: #eab308; }
+  .hint { font-size: 11.5px; line-height: 1.4; color: #94a3b8; margin-top: 6px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #canvasWrap { position: relative; width: 100%; height: 100vh; background: #0b0f16; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  #photoCanvas { max-width: 100%; max-height: 100%; cursor: crosshair; }
+  #viewer { width: 100%; height: 100vh; display: block; }
+  .status { font-size: 12px; color: #93c5fd; margin-top: 10px; min-height: 16px; }
+  .point-badge { position: absolute; background: #16a34a; color: white; font-size: 10px; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%); pointer-events: none; }
+  .toggle-tabs { display: flex; gap: 6px; margin-top: 8px; }
+  .toggle-tabs button { background: #1e293b; }
+  .toggle-tabs button.active { background: #2563eb; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Foto → Modelo 3D</h1>
+    <div class="hint">Gera um modelo 3D a partir de uma foto usando uma IA aberta (TripoSR), e calibra o tamanho real usando um objeto de referência na mesma foto (ex: uma moeda).</div>
+
+    <div class="toggle-tabs">
+      <button id="tabUpload" class="active">1. Foto</button>
+      <button id="tabScale">2. Escala</button>
+      <button id="tabGenerate">3. Gerar</button>
+    </div>
+
+    <div id="panelUpload">
+      <h2>Foto</h2>
+      <input type="file" id="photoInput" accept="image/*" />
+      <div class="hint">Tire a foto do objeto de frente, num fundo liso, com um objeto de referência (moeda, régua, etc.) visível ao lado.</div>
+    </div>
+
+    <div id="panelScale" style="display:none">
+      <h2>Calibrar escala</h2>
+      <div class="step" id="stepRef">
+        <b>Passo 1 — Referência</b>
+        <div class="hint">Clique nas DUAS pontas do objeto de referência na foto (ex: as bordas de uma moeda).</div>
+        <label>Tamanho real da referência (mm)</label>
+        <input type="number" id="refSizeMm" value="27" step="0.1" placeholder="Ex: 27 (moeda de R$1)">
+      </div>
+      <div class="step" id="stepObj">
+        <b>Passo 2 — Peça</b>
+        <div class="hint">Agora clique nas DUAS pontas da dimensão principal da peça (ex: a altura).</div>
+      </div>
+      <div id="calcResult" class="hint"></div>
+      <button id="resetPoints" style="margin-top:10px">Refazer marcações</button>
+    </div>
+
+    <div id="panelGenerate" style="display:none">
+      <h2>Gerar modelo</h2>
+      <label>Espaço do modelo (Hugging Face)</label>
+      <input id="spaceId" value="stabilityai/TripoSR">
+      <div class="hint">Se der erro de "espaço fora do ar", tente outro, por exemplo: <code>hansyan/perflow-triposr</code></div>
+      <button class="primary" id="generateBtn" style="margin-top:14px">Gerar modelo 3D</button>
+      <div class="status" id="status"></div>
+      <button id="downloadBtn" style="margin-top:10px; display:none">Baixar STL</button>
+    </div>
+  </aside>
+
+  <div id="canvasWrap">
+    <canvas id="photoCanvas"></canvas>
+  </div>
+  <canvas id="viewer" style="display:none"></canvas>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/",
+    "@gradio/client": "https://esm.sh/@gradio/client@1.7.0"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { Client } from '@gradio/client';
+
+// ---------------------------------------------------------------------
+// Navegação entre as 3 etapas (abas simples)
+// ---------------------------------------------------------------------
+const tabs = { upload: document.getElementById('tabUpload'), scale: document.getElementById('tabScale'), generate: document.getElementById('tabGenerate') };
+const panels = { upload: document.getElementById('panelUpload'), scale: document.getElementById('panelScale'), generate: document.getElementById('panelGenerate') };
+function showTab(name) {
+  Object.keys(tabs).forEach((k) => {
+    tabs[k].classList.toggle('active', k === name);
+    panels[k].style.display = k === name ? 'block' : 'none';
+  });
+  document.getElementById('canvasWrap').style.display = name === 'generate' ? 'none' : 'flex';
+  document.getElementById('viewer').style.display = name === 'generate' ? 'block' : 'none';
+}
+tabs.upload.onclick = () => showTab('upload');
+tabs.scale.onclick = () => showTab('scale');
+tabs.generate.onclick = () => showTab('generate');
+
+// ---------------------------------------------------------------------
+// Etapa 1 — Foto
+// ---------------------------------------------------------------------
+const photoCanvas = document.getElementById('photoCanvas');
+const ctx = photoCanvas.getContext('2d');
+let photoImage = null;
+let photoFile = null;
+let points = []; // até 4 pontos: [refA, refB, objA, objB]
+
+document.getElementById('photoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  photoFile = file;
+  const img = new Image();
+  img.onload = () => {
+    photoImage = img;
+    photoCanvas.width = img.width;
+    photoCanvas.height = img.height;
+    drawPhoto();
+    showTab('scale');
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+function drawPhoto() {
+  if (!photoImage) return;
+  ctx.clearRect(0, 0, photoCanvas.width, photoCanvas.height);
+  ctx.drawImage(photoImage, 0, 0);
+  ctx.strokeStyle = '#16a34a';
+  ctx.lineWidth = Math.max(2, photoImage.width / 300);
+  ctx.fillStyle = '#16a34a';
+  points.forEach((p) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, ctx.lineWidth * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  if (points.length >= 2) drawLine(points[0], points[1]);
+  if (points.length >= 4) drawLine(points[2], points[3]);
+}
+function drawLine(a, b) {
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+}
+
+photoCanvas.addEventListener('click', (e) => {
+  if (points.length >= 4 || !photoImage) return;
+  const rect = photoCanvas.getBoundingClientRect();
+  const scaleX = photoCanvas.width / rect.width;
+  const scaleY = photoCanvas.height / rect.height;
+  points.push({ x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY });
+  drawPhoto();
+  updateSteps();
+});
+
+document.getElementById('resetPoints').addEventListener('click', () => {
+  points = [];
+  drawPhoto();
+  updateSteps();
+});
+
+let realSizeMm = null; // tamanho real calculado da peça
+
+function dist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
+
+function updateSteps() {
+  const stepRef = document.getElementById('stepRef');
+  const stepObj = document.getElementById('stepObj');
+  const result = document.getElementById('calcResult');
+  stepRef.className = 'step' + (points.length >= 2 ? ' done' : ' active');
+  stepObj.className = 'step' + (points.length >= 4 ? ' done' : points.length >= 2 ? ' active' : '');
+
+  if (points.length >= 4) {
+    const refPx = dist(points[0], points[1]);
+    const objPx = dist(points[2], points[3]);
+    const refMm = Number(document.getElementById('refSizeMm').value) || 0;
+    if (refPx > 0 && refMm > 0) {
+      const mmPerPx = refMm / refPx;
+      realSizeMm = objPx * mmPerPx;
+      result.textContent = `Dimensão real calculada da peça: ${realSizeMm.toFixed(1)} mm`;
+      showTab('generate');
+    }
+  } else {
+    result.textContent = '';
+    realSizeMm = null;
+  }
+}
+document.getElementById('refSizeMm').addEventListener('input', updateSteps);
+
+// ---------------------------------------------------------------------
+// Etapa 3 — Geração 3D (chama o modelo de IA gratuito via Hugging Face)
+// ---------------------------------------------------------------------
+const statusEl = document.getElementById('status');
+const canvas = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x0b0f16);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 5000);
+camera.position.set(120, 100, 150);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 2.2));
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(100, 200, 120);
+scene.add(key);
+scene.add(new THREE.GridHelper(200, 20, 0x475569, 0x273449));
+
+let currentModel = null;
+
+function resize() {
+  const w = window.innerWidth - 360;
+  const h = window.innerHeight;
+  renderer.setSize(Math.max(320, w), h, false);
+  camera.aspect = Math.max(320, w) / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+function animate() {
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+document.getElementById('generateBtn').addEventListener('click', async () => {
+  if (!photoFile) { statusEl.textContent = 'Envie uma foto primeiro.'; return; }
+  const spaceId = document.getElementById('spaceId').value.trim();
+  const downloadBtn = document.getElementById('downloadBtn');
+  downloadBtn.style.display = 'none';
+  resize();
+
+  try {
+    statusEl.textContent = 'Conectando ao modelo de IA (pode demorar se estiver "dormindo")...';
+    const client = await Client.connect(spaceId);
+
+    statusEl.textContent = 'Removendo fundo da imagem...';
+    const preprocess = await client.predict('/preprocess', [photoFile, true, 0.85]);
+    const processedImage = preprocess.data[0];
+
+    statusEl.textContent = 'Gerando modelo 3D — isso pode levar de 20s a alguns minutos...';
+    const generated = await client.predict('/generate', [processedImage, 256]);
+
+    // O resultado normalmente traz o arquivo OBJ e o GLB (nessa ordem).
+    // Preferimos o GLB — o OBJ desse modelo sai espelhado.
+    const entries = generated.data || [];
+    const glbEntry = entries[1] || entries[0];
+    const glbUrl = typeof glbEntry === 'string' ? glbEntry : (glbEntry?.url || glbEntry?.path);
+    if (!glbUrl) throw new Error('O modelo não retornou um arquivo 3D. Tente outro "espaço" na aba Gerar.');
+
+    statusEl.textContent = 'Carregando modelo na cena...';
+    const loader = new GLTFLoader();
+    loader.load(glbUrl, (gltf) => {
+      if (currentModel) scene.remove(currentModel);
+      currentModel = gltf.scene;
+
+      // Escala automática usando a medida calculada na Etapa 2.
+      const box = new THREE.Box3().setFromObject(currentModel);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const largest = Math.max(size.x, size.y, size.z) || 1;
+      const targetMm = realSizeMm || 50;
+      const scale = targetMm / largest;
+      currentModel.scale.setScalar(scale);
+
+      const centeredBox = new THREE.Box3().setFromObject(currentModel);
+      const center = new THREE.Vector3();
+      centeredBox.getCenter(center);
+      currentModel.position.sub(center);
+
+      scene.add(currentModel);
+      statusEl.textContent = `Modelo pronto! Escalado pra ${targetMm.toFixed(1)}mm no maior eixo.`;
+      downloadBtn.style.display = 'block';
+    }, undefined, (err) => {
+      console.error(err);
+      statusEl.textContent = 'Não consegui carregar o modelo gerado (formato ou CORS). Tente outro espaço.';
+    });
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'Erro: ' + (err?.message || 'não consegui gerar o modelo. Tente outro "espaço" acima.');
+  }
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!currentModel) return;
+  const exporter = new STLExporter();
+  const data = exporter.parse(currentModel, { binary: true });
+  const blob = new Blob([data], { type: 'model/stl' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'modelo-foto-3d.stl';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+</script>
+</body>
+</html>

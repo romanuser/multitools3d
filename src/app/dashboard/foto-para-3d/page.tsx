@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
-export default async function StlCurvoPage() {
+export default async function FotoPara3DPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -15,16 +15,21 @@ export default async function StlCurvoPage() {
         <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
           ← Painel
         </Link>
-        <h1 className="font-display text-2xl text-ink mt-2">Gerador de texto STL</h1>
+        <h1 className="font-display text-2xl text-ink mt-2">Foto → Modelo 3D</h1>
         <p className="text-sm text-ink-muted mb-4">
-          Crie nomes curvados para copos, canecas e porta-latas. Carregue uma fonte TTF/OTF e
-          exporte o STL.
+          Gera um modelo 3D a partir de uma foto usando uma IA aberta e gratuita, e calibra o
+          tamanho real usando um objeto de referência (moeda, régua etc.) na mesma foto. Como usa
+          um serviço comunitário gratuito, pode ser mais lento em horários de pico — se der erro,
+          tente trocar o "espaço" indicado dentro da ferramenta.
         </p>
       </div>
-      <div className="max-w-6xl mx-auto w-full flex-1 rounded-2xl overflow-hidden border border-line" style={{ minHeight: "80vh" }}>
+      <div
+        className="max-w-6xl mx-auto w-full flex-1 rounded-2xl overflow-hidden border border-line"
+        style={{ minHeight: "80vh" }}
+      >
         <iframe
-          src="/tools/stl-curvo/index.html"
-          title="Gerador de texto curvado em STL"
+          src="/tools/foto-para-3d/index.html"
+          title="Foto para Modelo 3D"
           allow="fullscreen"
           className="w-full h-full"
           style={{ minHeight: "80vh", border: 0 }}

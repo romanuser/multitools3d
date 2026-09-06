@@ -11,7 +11,7 @@ const freeFeatures = [
 
 const vipFeatures = [
   "Tudo do plano Free",
-  "Gerador de texto curvo em STL",
+  "Gerador de texto STL",
   "Modelador 3D com exportação de STL",
   "Loja virtual própria, com pagamento direto na sua conta",
 ];
@@ -117,7 +117,7 @@ export default async function Home() {
             </p>
           </div>
           <div className="sm:order-1">
-            <BrowserFrame src="/marketing/stl-curvo.png" alt="Gerador de texto curvo em STL, rodando no navegador" />
+            <BrowserFrame src="/marketing/stl-curvo.png" alt="Gerador de texto STL, rodando no navegador" />
           </div>
         </div>
       </section>

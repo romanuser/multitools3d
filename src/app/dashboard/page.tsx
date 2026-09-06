@@ -8,8 +8,9 @@ const freeModules = [
   { title: "Estoque de filamento", href: "/dashboard/estoque" },
   { title: "Impressoras", href: "/dashboard/impressoras" },
   { title: "Fila de impressão", href: "/dashboard/fila" },
-  { title: "Gerador STL curvo", href: "/dashboard/gerador-stl-curvo" },
+  { title: "Gerador de texto STL", href: "/dashboard/gerador-stl-curvo" },
   { title: "Modelador 3D", href: "/dashboard/modelador-3d" },
+  { title: "Foto → Modelo 3D", href: "/dashboard/foto-para-3d" },
 ];
 
 const vipModules = [
