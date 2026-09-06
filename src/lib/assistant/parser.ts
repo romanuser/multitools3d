@@ -16,6 +16,13 @@ function capitalizeWords(v: string) {
 
 const GREETINGS = ["oi", "ola", "eae", "opa", "bom dia", "boa tarde", "boa noite"];
 
+const AFFIRMATIVE_WORDS = ["sim", "quero", "pode", "claro", "manda", "vai", "bora", "isso", "confirmo", "ok", "positivo"];
+
+export function isAffirmative(raw: string) {
+  const text = normalize(raw);
+  return AFFIRMATIVE_WORDS.some((w) => new RegExp(`\\b${w}\\b`).test(text));
+}
+
 export type AssistantIntent =
   | { type: "greeting" }
   | { type: "register" }
@@ -57,10 +64,6 @@ export function parseIntent(raw: string): AssistantIntent {
     return { type: "greeting" };
   }
 
-  if (/cadastr\w*\s*(minha\s*)?conta|criar\s*conta|quero\s*me\s*cadastrar|\bregistrar\b/.test(text)) {
-    return { type: "register" };
-  }
-
   if (/impressora/.test(text) && /cadastr\w*|adicion\w*|nov[ao]/.test(text)) {
     const idx = raw.toLowerCase().indexOf("impressora");
     let name = idx >= 0 ? raw.slice(idx + "impressora".length).trim() : "";
@@ -82,6 +85,13 @@ export function parseIntent(raw: string): AssistantIntent {
 
   if (/produto/.test(text) && /cadastr\w*|adicion\w*|nov[ao]|criar/.test(text)) {
     return { type: "add_product_start" };
+  }
+
+  // Checagem de cadastro de CONTA por último — assim "cadastrar impressora"
+  // ou "cadastrar produto" não caem aqui sem querer, mas "desejo me
+  // cadastrar", "quero criar conta", "registrar" etc. continuam pegando.
+  if (/cadastr\w*|criar\s*conta|\bregistrar\b/.test(text)) {
+    return { type: "register" };
   }
 
   return { type: "unknown" };

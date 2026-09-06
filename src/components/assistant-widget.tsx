@@ -6,20 +6,35 @@ import { runAssistantCommand, type PendingState } from "@/lib/assistant/actions"
 
 type Message = { role: "user" | "assistant"; text: string };
 
+function greetingFor(pathname: string): string {
+  if (pathname.startsWith("/dashboard")) {
+    return 'Oi! Posso cadastrar impressora, adicionar filamento ao estoque, cadastrar um produto, ou te levar pro cadastro. Tenta: "cadastrar impressora Ender 3".';
+  }
+  if (pathname.startsWith("/admin")) {
+    return "Oi! Por aqui você gerencia clientes e o frete da plataforma. Como posso ajudar?";
+  }
+  return 'Oi! Eu posso te ajudar a criar sua conta grátis no Multiferramenta 3D. É só dizer "quero me cadastrar".';
+}
+
 export function AssistantWidget() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      text: 'Oi! Eu posso cadastrar impressora, adicionar filamento ao estoque, cadastrar um produto, ou te levar pro cadastro. Tenta: "cadastrar impressora Ender 3".',
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([{ role: "assistant", text: greetingFor(pathname || "/") }]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<PendingState>(null);
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Troca a mensagem de recepção conforme a área do site — mas só antes
+  // do visitante começar a conversar de verdade, pra não apagar um
+  // atendimento em andamento quando ele navega de uma página pra outra.
+  useEffect(() => {
+    setMessages((current) => {
+      if (current.length > 1) return current;
+      return [{ role: "assistant", text: greetingFor(pathname || "/") }];
+    });
+  }, [pathname]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

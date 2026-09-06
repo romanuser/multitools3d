@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { parseIntent } from "./parser";
+import { parseIntent, isAffirmative } from "./parser";
 
 export type AssistantReply = { reply: string; redirectTo?: string; refresh?: boolean; pending?: PendingState };
 
@@ -13,6 +13,7 @@ export type PendingState =
       price?: number;
       printTimeMin?: number;
     }
+  | { flow: "offer_register" }
   | null;
 
 const HELP_TEXT =
@@ -41,6 +42,13 @@ export async function runAssistantCommand(text: string, pending?: PendingState):
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (pending?.flow === "offer_register") {
+    if (isAffirmative(text)) {
+      return { reply: "Show! Vou te levar pra criar sua conta grátis.", redirectTo: "/cadastro", pending: null };
+    }
+    return { reply: "Sem problemas! Se mudar de ideia é só chamar.", pending: null };
+  }
 
   // Continua uma conversa de várias etapas já em andamento (ex: cadastro
   // de produto, que pergunta nome, preço, tempo e peso um de cada vez).
@@ -116,6 +124,7 @@ export async function runAssistantCommand(text: string, pending?: PendingState):
   if (!user) {
     return {
       reply: "Pra fazer isso eu preciso que você esteja logado. Quer criar uma conta grátis?",
+      pending: { flow: "offer_register" },
     };
   }
 
