@@ -34,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <DashboardSidebar
         companyName={account?.company_name || "Sua oficina"}
         logoUrl={account?.company_logo_url ?? null}

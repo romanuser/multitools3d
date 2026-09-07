@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/lib/auth/actions";
@@ -20,6 +21,12 @@ export function DashboardSidebar({
   isAdmin: boolean;
 }) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Fecha a gaveta sozinha sempre que o usuário navega pra outra página.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const mainItems: NavItem[] = [
     { href: "/dashboard", label: "Ferramentas", icon: "▦" },
@@ -63,8 +70,8 @@ export function DashboardSidebar({
     );
   }
 
-  return (
-    <aside className="w-60 shrink-0 border-r border-line bg-surface flex flex-col h-screen sticky top-0">
+  const navContent = (
+    <>
       <div className="p-4 flex items-center gap-3 border-b border-line">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -74,10 +81,17 @@ export function DashboardSidebar({
             {companyName.charAt(0).toUpperCase()}
           </div>
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-ink truncate">{companyName}</p>
           <p className="text-xs text-ink-muted">{planLabel}</p>
         </div>
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden text-ink-muted hover:text-ink text-xl leading-none shrink-0"
+          aria-label="Fechar menu"
+        >
+          ×
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -122,6 +136,38 @@ export function DashboardSidebar({
           Sair
         </button>
       </form>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Barra de topo só no celular, com botão de abrir o menu */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-line bg-surface sticky top-0 z-30">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="text-ink text-xl leading-none"
+          aria-label="Abrir menu"
+        >
+          ☰
+        </button>
+        <span className="text-sm text-ink-muted truncate">{companyName}</span>
+        <span className="w-5" />
+      </div>
+
+      {/* Gaveta do menu no celular */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="w-64 max-w-[80vw] bg-surface border-r border-line h-full flex flex-col">
+            {navContent}
+          </div>
+          <div className="flex-1 bg-black/60" onClick={() => setMobileOpen(false)} />
+        </div>
+      )}
+
+      {/* Menu fixo normal no computador */}
+      <aside className="hidden md:flex w-60 shrink-0 border-r border-line bg-surface flex-col h-screen sticky top-0">
+        {navContent}
+      </aside>
+    </>
   );
 }
