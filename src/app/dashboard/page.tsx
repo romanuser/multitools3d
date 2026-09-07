@@ -10,10 +10,10 @@ const freeModules = [
   { title: "Fila de impressão", href: "/dashboard/fila" },
   { title: "Gerador de texto STL", href: "/dashboard/gerador-stl-curvo" },
   { title: "Modelador 3D", href: "/dashboard/modelador-3d" },
-  { title: "Foto → Modelo 3D", href: "/dashboard/foto-para-3d" },
 ];
 
 const vipModules = [
+  { title: "Foto → Modelo 3D (IA)", href: "/dashboard/foto-para-3d" },
   { title: "Foto → STL (peças planas)", href: null },
   { title: "Loja virtual", href: "/dashboard/loja" },
 ];

@@ -29,6 +29,12 @@
   .toggle-tabs { display: flex; gap: 6px; margin-top: 8px; }
   .toggle-tabs button { background: #1e293b; }
   .toggle-tabs button.active { background: #2563eb; }
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; }
+    #canvasWrap { height: 58vh; }
+    #viewer { height: 58vh; }
+    aside { max-height: 42vh; }
+  }
 </style>
 </head>
 <body>
@@ -111,6 +117,7 @@ function showTab(name) {
   });
   document.getElementById('canvasWrap').style.display = name === 'generate' ? 'none' : 'flex';
   document.getElementById('viewer').style.display = name === 'generate' ? 'block' : 'none';
+  if (name === 'generate' && typeof resize === 'function') setTimeout(resize, 0);
 }
 tabs.upload.onclick = () => showTab('upload');
 tabs.scale.onclick = () => showTab('scale');
@@ -229,10 +236,11 @@ scene.add(new THREE.GridHelper(200, 20, 0x475569, 0x273449));
 let currentModel = null;
 
 function resize() {
-  const w = window.innerWidth - 360;
-  const h = window.innerHeight;
-  renderer.setSize(Math.max(320, w), h, false);
-  camera.aspect = Math.max(320, w) / h;
+  const mobile = window.innerWidth <= 800;
+  const w = mobile ? window.innerWidth : window.innerWidth - 360;
+  const h = mobile ? window.innerHeight * 0.58 : window.innerHeight;
+  renderer.setSize(Math.max(280, w), h, false);
+  camera.aspect = Math.max(280, w) / h;
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
