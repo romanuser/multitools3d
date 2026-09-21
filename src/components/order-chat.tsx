@@ -53,7 +53,7 @@ export function OrderChat({
           <div key={m.id} className={`text-sm ${m.sender_role === role ? "text-right" : ""}`}>
             <span
               className={`inline-block rounded-2xl px-3 py-1.5 max-w-[85%] ${
-                m.sender_role === role ? "bg-amber text-white" : "bg-surface text-ink"
+                m.sender_role === role ? "bg-amber text-on-accent" : "bg-surface text-ink"
               }`}
             >
               {m.text}
@@ -76,7 +76,7 @@ export function OrderChat({
         <button
           onClick={send}
           disabled={sending}
-          className="bg-amber text-white text-sm font-medium rounded-full px-4 disabled:opacity-50"
+          className="bg-amber text-on-accent text-sm font-medium rounded-full px-4 disabled:opacity-50"
         >
           Enviar
         </button>

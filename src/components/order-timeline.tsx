@@ -30,8 +30,8 @@ export function OrderTimeline({ status }: { status: string }) {
                   state === "pending"
                     ? "bg-paper border border-line text-ink-muted"
                     : state === "current"
-                      ? "bg-amber text-white"
-                      : "bg-good text-white"
+                      ? "bg-amber text-on-accent"
+                      : "bg-good text-on-accent"
                 }`}
               >
                 {state === "done" ? "✓" : step.icon}

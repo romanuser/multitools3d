@@ -12,7 +12,7 @@ export function PlanCheckoutButton({ plan }: { plan: "vip_mensal" | "vip_vitalic
       <button
         type="submit"
         disabled={pending}
-        className="w-full bg-amber text-white font-medium rounded-full py-2.5 text-sm disabled:opacity-50"
+        className="w-full bg-amber text-on-accent font-medium rounded-full py-2.5 text-sm disabled:opacity-50"
       >
         {pending ? "Gerando link…" : "Assinar"}
       </button>

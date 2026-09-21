@@ -66,7 +66,7 @@ export default async function PedidoConfirmacaoPage({
             href={`https://wa.me/${normalizedWhatsapp}?text=${encodeURIComponent(whatsappMessage)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full bg-amber text-white font-medium rounded-full py-2.5 text-sm mt-5"
+            className="block w-full bg-amber text-on-accent font-medium rounded-full py-2.5 text-sm mt-5"
           >
             Falar no WhatsApp com a loja
           </a>

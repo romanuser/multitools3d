@@ -66,7 +66,7 @@ export default function ContaCadastroPage() {
             <button
               type="submit"
               disabled={status === "loading"}
-              className="w-full bg-amber text-white font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50"
+              className="w-full bg-amber text-on-accent font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50"
             >
               {status === "loading" ? "Criando…" : "Criar conta"}
             </button>

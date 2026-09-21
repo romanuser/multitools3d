@@ -169,7 +169,7 @@ function AdjustForm({ filament, onDone }: { filament: Filament; onDone: () => vo
         type="button"
         onClick={onSave}
         disabled={pending}
-        className="bg-amber text-white text-sm font-medium rounded-full px-4 py-2.5 disabled:opacity-50"
+        className="bg-amber text-on-accent text-sm font-medium rounded-full px-4 py-2.5 disabled:opacity-50"
       >
         {pending ? "Salvando…" : "Confirmar"}
       </button>
@@ -263,7 +263,7 @@ function FilamentForm({ filament, onDone }: { filament: Filament | null; onDone:
         <button
           type="submit"
           disabled={pending}
-          className="bg-amber text-white font-medium rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
+          className="bg-amber text-on-accent font-medium rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
         >
           {pending ? "Salvando…" : "Salvar"}
         </button>

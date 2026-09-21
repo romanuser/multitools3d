@@ -1,22 +1,7 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getAccountPlanStatus, hasFullAccess } from "@/lib/plans/access";
-
-const freeModules = [
-  { title: "Orçamentos", href: "/dashboard/orcamentos" },
-  { title: "Estoque de filamento", href: "/dashboard/estoque" },
-  { title: "Impressoras", href: "/dashboard/impressoras" },
-  { title: "Fila de impressão", href: "/dashboard/fila" },
-  { title: "Gerador de texto STL", href: "/dashboard/gerador-stl-curvo" },
-  { title: "Modelador 3D", href: "/dashboard/modelador-3d" },
-];
-
-const vipModules = [
-  { title: "Foto → Modelo 3D (IA)", href: "/dashboard/foto-para-3d" },
-  { title: "Foto → STL (peças planas)", href: null },
-  { title: "Loja virtual", href: "/dashboard/loja" },
-];
+import { ToolGroup, manageTools, createTools, salesTools } from "./tool-list";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -30,59 +15,19 @@ export default async function DashboardPage() {
   const hasVip = hasFullAccess(plan);
 
   return (
-    <main className="min-h-screen px-6 py-12">
+    <main className="min-h-screen px-6 py-10 md:px-10">
       <div className="max-w-3xl mx-auto">
-        <h1 className="font-display text-2xl text-ink mb-6">Ferramentas</h1>
+        <header className="mb-10">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">Ferramentas</h1>
+          <p className="text-ink-muted mt-1.5">Tudo o que você usa pra tocar a produção, num lugar só.</p>
+        </header>
 
-        <div className="grid sm:grid-cols-2 gap-3 mb-3">
-          {freeModules.map(({ title, href }) =>
-            href ? (
-              <ModuleLink key={title} title={title} href={href} />
-            ) : (
-              <ModulePending key={title} title={title} note="em breve" />
-            )
-          )}
-        </div>
-
-        <p className="text-xs text-ink-muted uppercase tracking-normal mt-8 mb-3">Plano VIP</p>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {vipModules.map(({ title, href }) => {
-            if (hasVip && href) return <ModuleLink key={title} title={title} href={href} />;
-            if (hasVip) return <ModulePending key={title} title={title} note="em breve" />;
-            return (
-              <Link
-                key={title}
-                href="/dashboard/plano"
-                className="border border-dashed border-amber/40 rounded-2xl p-5 hover:border-amber transition-colors"
-              >
-                <p className="font-medium text-ink">{title}</p>
-                <p className="text-xs text-amber mt-1">requer plano VIP</p>
-              </Link>
-            );
-          })}
+        <div className="space-y-9">
+          <ToolGroup title="Gestão" tools={manageTools} hasVip={hasVip} />
+          <ToolGroup title="Criação 3D" tools={createTools} hasVip={hasVip} />
+          <ToolGroup title="Vendas" tools={salesTools} hasVip={hasVip} />
         </div>
       </div>
     </main>
-  );
-}
-
-function ModuleLink({ title, href }: { title: string; href: string }) {
-  return (
-    <Link
-      href={href}
-      className="group border border-line bg-surface rounded-2xl p-5 transition-colors hover:border-amber"
-    >
-      <p className="font-medium text-ink">{title}</p>
-      <p className="text-xs text-amber mt-1 group-hover:underline underline-offset-2">Abrir</p>
-    </Link>
-  );
-}
-
-function ModulePending({ title, note }: { title: string; note: string }) {
-  return (
-    <div className="border border-dashed border-line rounded-2xl p-5 text-ink-muted">
-      <p className="font-medium text-ink-muted">{title}</p>
-      <p className="text-xs mt-1">{note}</p>
-    </div>
   );
 }

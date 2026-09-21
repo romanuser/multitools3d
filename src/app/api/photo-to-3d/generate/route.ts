@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 import { Client } from "@gradio/client";
 
 // ---------------------------------------------------------------------
@@ -7,6 +8,10 @@ import { Client } from "@gradio/client";
 // Servidor conversando com servidor não tem essa restrição.
 // ---------------------------------------------------------------------
 export async function POST(request: NextRequest) {
+  if (!FEATURES.photoTo3D) {
+    return NextResponse.json({ message: FEATURE_DISABLED_MESSAGE }, { status: 503 });
+  }
+
   try {
     const formData = await request.formData();
     const photo = formData.get("photo") as File | null;

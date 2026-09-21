@@ -50,7 +50,7 @@ export function StoreHeader({
               </Link>
               <Link
                 href="/loja/conta/cadastro"
-                className="bg-amber text-white font-medium rounded-full px-4 py-1.5"
+                className="bg-amber text-on-accent font-medium rounded-full px-4 py-1.5"
               >
                 Cadastrar
               </Link>

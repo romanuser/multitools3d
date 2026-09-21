@@ -49,7 +49,7 @@ export default function CadastroPage() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full bg-amber text-white font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50"
+            className="w-full bg-amber text-on-accent font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50"
           >
             {pending ? "Criando…" : "Criar conta"}
           </button>

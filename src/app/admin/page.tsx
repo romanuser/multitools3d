@@ -74,7 +74,7 @@ export default async function AdminPage({
             <a
               href="/api/melhor-envio/connect"
               className={`text-sm font-medium rounded-full px-4 py-2 ${
-                me.melhor_envio_access_token ? "border border-line text-ink-muted hover:text-ink" : "bg-amber text-white"
+                me.melhor_envio_access_token ? "border border-line text-ink-muted hover:text-ink" : "bg-amber text-on-accent"
               }`}
             >
               {me.melhor_envio_access_token ? "Reconectar" : "Conectar Melhor Envio"}

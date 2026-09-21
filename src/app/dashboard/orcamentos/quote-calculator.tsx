@@ -376,7 +376,7 @@ export function QuoteCalculator({
           type="button"
           onClick={generatePdf}
           disabled={status.kind === "loading"}
-          className="w-full bg-amber text-white font-medium rounded-full py-3 text-sm disabled:opacity-50"
+          className="w-full bg-amber text-on-accent font-medium rounded-full py-3 text-sm disabled:opacity-50"
         >
           {status.kind === "loading" ? "Gerando…" : "Gerar orçamento em PDF"}
         </button>

@@ -1,16 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #101215;
-  --surface: #17191d;
-  --surface-raised: #1f2227;
-  --ink: #e7e9ec;
-  --ink-muted: #8a8f98;
-  --line: #262a30;
+  --paper: #0c1110;
+  --surface: #111917;
+  --surface-raised: #182320;
+  --ink: #e9efeb;
+  --ink-muted: #8b9b93;
+  --line: #22302a;
+  /* Verde da marca. O nome "amber" é antigo, mas foi mantido pra não
+     quebrar as telas que já usam essas classes. */
   --amber: #2ecc71;
-  --amber-soft: #16261c;
+  --amber-soft: #12251b;
   --good: #2ecc71;
   --danger: #ef4444;
+  /* Cor do texto sobre fundo verde (botões e selos). */
+  --on-accent: #06140c;
+  --warn: #f5a524;
 }
 
 @theme inline {
@@ -24,14 +29,25 @@
   --color-amber-soft: var(--amber-soft);
   --color-good: var(--good);
   --color-danger: var(--danger);
+  --color-on-accent: var(--on-accent);
+  --color-warn: var(--warn);
   --font-sans: var(--font-plex-sans);
-  --font-display: var(--font-plex-sans);
+  --font-display: var(--font-bricolage);
   --font-spec: var(--font-plex-mono);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--paper);
   color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
 }
 
 .tabular-nums {
@@ -50,5 +66,48 @@ body {
 
 .input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.35);
+  border-color: rgba(46, 204, 113, 0.6);
+  box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.18);
+}
+
+/* ---------------------------------------------------------------------
+   Linhas de camada: a textura de uma peça FDM vista de perto. É o motivo
+   visual da marca (fundo do hero e miniatura da peça sendo impressa).
+   --------------------------------------------------------------------- */
+.layer-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.045) 0,
+    rgb(255 255 255 / 0.045) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+}
+
+/* A peça do hero "imprime" camada por camada uma única vez, ao abrir a
+   página. Cada camada recebe seu atraso pela variável --i. */
+@keyframes layer-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.layer-printed {
+  animation: layer-in 0.4s ease-out both;
+  animation-delay: calc(var(--i) * 55ms + 350ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .layer-printed {
+    animation: none;
+  }
 }

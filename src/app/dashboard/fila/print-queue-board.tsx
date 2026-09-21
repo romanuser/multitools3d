@@ -279,7 +279,7 @@ function ActionButton({
       onClick={onClick}
       disabled={pending}
       className={`text-xs font-medium rounded-full px-3 py-1.5 disabled:opacity-50 ${
-        variant === "danger" ? "text-danger border border-danger/30 hover:bg-danger/10" : "bg-amber text-white"
+        variant === "danger" ? "text-danger border border-danger/30 hover:bg-danger/10" : "bg-amber text-on-accent"
       }`}
     >
       {children}
@@ -350,7 +350,7 @@ function NewJobForm({
         <button
           type="submit"
           disabled={pending}
-          className="bg-amber text-white font-medium rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
+          className="bg-amber text-on-accent font-medium rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
         >
           {pending ? "Criando…" : "Adicionar à fila"}
         </button>

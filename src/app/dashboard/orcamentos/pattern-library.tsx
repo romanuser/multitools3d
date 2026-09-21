@@ -222,7 +222,7 @@ function PatternForm({
         <button
           type="submit"
           disabled={pending}
-          className="bg-amber text-white font-medium rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
+          className="bg-amber text-on-accent font-medium rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
         >
           {pending ? "Salvando…" : "Salvar padrão"}
         </button>

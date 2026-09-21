@@ -44,7 +44,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full bg-amber text-white font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50"
+            className="w-full bg-amber text-on-accent font-semibold rounded-lg py-2.5 text-sm disabled:opacity-50"
           >
             {pending ? "Entrando…" : "Entrar"}
           </button>

@@ -94,7 +94,7 @@ export function Storefront({
               <button
                 type="button"
                 onClick={() => setShowCheckout(true)}
-                className="bg-amber text-white text-sm font-medium rounded-full px-5 py-2.5"
+                className="bg-amber text-on-accent text-sm font-medium rounded-full px-5 py-2.5"
               >
                 Finalizar pedido
               </button>
@@ -157,7 +157,7 @@ function ProductCard({
             <button
               type="button"
               onClick={onAdd}
-              className="w-full bg-amber text-white text-sm font-medium rounded-full py-2"
+              className="w-full bg-amber text-on-accent text-sm font-medium rounded-full py-2"
             >
               Adicionar
             </button>
@@ -341,7 +341,7 @@ function CheckoutModal({
           <button
             type="submit"
             disabled={pending}
-            className="w-full bg-amber text-white font-medium rounded-full py-3 text-sm disabled:opacity-50"
+            className="w-full bg-amber text-on-accent font-medium rounded-full py-3 text-sm disabled:opacity-50"
           >
             {pending ? "Gerando pagamento…" : "Ir para o pagamento"}
           </button>

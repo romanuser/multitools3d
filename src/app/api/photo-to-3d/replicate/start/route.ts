@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { FEATURES, FEATURE_DISABLED_MESSAGE } from "@/lib/features";
 import Replicate from "replicate";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountPlanStatus, hasFullAccess } from "@/lib/plans/access";
@@ -15,6 +16,10 @@ const MONTHLY_LIMIT = 10;
 // não sair caro demais se alguém gerar muitos modelos seguidos.
 // ---------------------------------------------------------------------
 export async function POST(request: NextRequest) {
+  if (!FEATURES.photoTo3D) {
+    return NextResponse.json({ message: FEATURE_DISABLED_MESSAGE }, { status: 503 });
+  }
+
   try {
     const token = process.env.REPLICATE_API_TOKEN;
     if (!token) {

@@ -75,7 +75,7 @@ export function AssistantWidget() {
               <div key={i} className={`text-sm ${m.role === "user" ? "text-right" : ""}`}>
                 <span
                   className={`inline-block rounded-2xl px-3 py-2 max-w-[85%] ${
-                    m.role === "user" ? "bg-amber text-white" : "bg-paper text-ink"
+                    m.role === "user" ? "bg-amber text-on-accent" : "bg-paper text-ink"
                   }`}
                 >
                   {m.text}
@@ -96,7 +96,7 @@ export function AssistantWidget() {
             <button
               onClick={send}
               disabled={busy}
-              className="bg-amber text-white text-sm font-medium rounded-full px-4 disabled:opacity-50"
+              className="bg-amber text-on-accent text-sm font-medium rounded-full px-4 disabled:opacity-50"
             >
               ↑
             </button>
@@ -106,7 +106,7 @@ export function AssistantWidget() {
 
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-14 h-14 rounded-full bg-amber text-white text-2xl shadow-2xl shadow-black/40 flex items-center justify-center hover:opacity-90 transition-opacity"
+        className="w-14 h-14 rounded-full bg-amber text-on-accent text-2xl shadow-2xl shadow-black/40 flex items-center justify-center hover:opacity-90 transition-opacity"
         aria-label="Abrir assistente"
       >
         {open ? "×" : "💬"}
