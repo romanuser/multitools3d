@@ -66,11 +66,14 @@ export async function quoteShipping(
       );
     }
 
+    // Os Correios recusam pacotes menores que 11 x 2 x 16 cm (largura x altura x
+    // comprimento). Peça pequena impressa em 3D cai aqui com frequência, então
+    // sobe pro mínimo em vez de a cotação voltar vazia.
     return {
       id: product.id,
-      width,
-      height,
-      length,
+      width: Math.max(width, 11),
+      height: Math.max(height, 2),
+      length: Math.max(length, 16),
       weight,
       insurance_value: Number(product.price || 0),
       quantity: item.quantity,
@@ -93,9 +96,14 @@ export async function quoteShipping(
     throw new Error(data?.message || "Não foi possível calcular o frete agora.");
   }
 
-  return data
+  const reasons = new Set<string>();
+
+  const quotes = data
     .flatMap((entry: { error?: string; id: number; name?: string; company?: { name?: string }; custom_price?: number; price?: number; custom_delivery_time?: number; delivery_time?: number }) => {
-      if (entry.error) return [];
+      if (entry.error) {
+        reasons.add(String(entry.error));
+        return [];
+      }
       const price = Number(entry.custom_price ?? entry.price);
       if (!Number.isFinite(price)) return [];
       const delivery = Number(entry.custom_delivery_time ?? entry.delivery_time);
@@ -110,4 +118,19 @@ export async function quoteShipping(
       ];
     })
     .sort((a, b) => a.price - b.price);
+
+  // Todas as transportadoras recusaram: mostra o motivo real (peso, medida,
+  // CEP sem atendimento...) em vez de "nenhuma opção encontrada".
+  if (!quotes.length && reasons.size) {
+    console.error("[frete] Melhor Envio recusou a cotação", {
+      accountId,
+      originCep,
+      toCep,
+      products: meProducts,
+      reasons: [...reasons],
+    });
+    throw new Error(`As transportadoras recusaram o envio: ${[...reasons].slice(0, 3).join(" | ")}`);
+  }
+
+  return quotes;
 }
