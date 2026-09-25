@@ -44,3 +44,38 @@ export async function adminUpdatePlan(
   revalidatePath("/admin");
   return {};
 }
+
+// Chamado assim que o admin clica em "Enviar boas-vindas" (o link do Gmail
+// já abre em seguida). Não tem como confirmar que o e-mail foi realmente
+// enviado dentro do Gmail — isso marca a intenção, pra pelo menos o
+// painel lembrar quem já foi contatado e evitar reenvio por engano.
+export async function adminMarkWelcomeSent(accountIds: string[]): Promise<{ error?: string }> {
+  await requireAdmin();
+  if (!accountIds.length) return {};
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("accounts")
+    .update({ welcome_email_sent_at: new Date().toISOString() })
+    .in("id", accountIds);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  return {};
+}
+
+// Desfaz a marcação de "já enviado" — usado quando o admin clica na própria
+// etiqueta de data, pra liberar o checkbox de novo (ex: precisa reenviar de
+// propósito pra alguém).
+export async function adminResetWelcomeSent(accountId: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("accounts").update({ welcome_email_sent_at: null }).eq("id", accountId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  return {};
+}
