@@ -2,20 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-const DISMISS_KEY = "install-prompt-dismissed-at";
-const DISMISS_DAYS = 14;
+// Guarda só a intenção "essa pessoa já mexeu no aviso alguma vez" — depois
+// disso, toda visita nova começa minimizado (ícone pequeno) em vez de abrir
+// o card grande de novo sozinho.
+const MODE_KEY = "install-prompt-mode";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
-
-function isDismissedRecently() {
-  const raw = localStorage.getItem(DISMISS_KEY);
-  if (!raw) return false;
-  const elapsedDays = (Date.now() - Number(raw)) / (1000 * 60 * 60 * 24);
-  return elapsedDays < DISMISS_DAYS;
-}
 
 function isStandalone() {
   const nav = navigator as Navigator & { standalone?: boolean };
@@ -29,41 +24,70 @@ function isIos() {
 // Safari no iOS não tem instalação automática (sem beforeinstallprompt), então
 // o único caminho é ensinar o passo manual de "Adicionar à Tela de Início".
 export function InstallPrompt() {
-  const [mode, setMode] = useState<"hidden" | "android" | "ios">("hidden");
+  const [platform, setPlatform] = useState<"none" | "android" | "ios">("none");
+  // "full" = card grande aberto; "mini" = só o ícone; "hidden" = nada (já
+  // instalado, ou o navegador ainda não ofereceu nada pra mostrar).
+  const [view, setView] = useState<"hidden" | "full" | "mini">("hidden");
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    if (isStandalone() || isDismissedRecently()) return;
+    if (isStandalone()) return;
+
+    const alreadyInteracted = localStorage.getItem(MODE_KEY) === "minimized";
 
     if (isIos()) {
-      const timer = setTimeout(() => setMode("ios"), 2500);
-      return () => clearTimeout(timer);
+      setPlatform("ios");
+      if (alreadyInteracted) {
+        setView("mini");
+      } else {
+        const timer = setTimeout(() => setView("full"), 2500);
+        return () => clearTimeout(timer);
+      }
+      return;
     }
 
     function onBeforeInstall(e: Event) {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setMode("android");
+      setPlatform("android");
+      setView(alreadyInteracted ? "mini" : "full");
     }
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
 
-  function dismiss() {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    setMode("hidden");
+  function minimize() {
+    localStorage.setItem(MODE_KEY, "minimized");
+    setView("mini");
+  }
+
+  function expand() {
+    setView("full");
   }
 
   async function install() {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") setMode("hidden");
-    else dismiss();
+    if (outcome === "accepted") setView("hidden");
+    else minimize();
   }
 
-  if (mode === "hidden") return null;
+  if (view === "hidden") return null;
+
+  if (view === "mini") {
+    return (
+      <button
+        onClick={expand}
+        aria-label="Adicionar à tela de início"
+        title="Adicionar à tela de início"
+        className="fixed bottom-24 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-amber text-lg text-on-accent shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] transition hover:brightness-110 sm:right-4"
+      >
+        📲
+      </button>
+    );
+  }
 
   return (
     <div
@@ -79,7 +103,7 @@ export function InstallPrompt() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-ink">Adicione à tela de início</p>
 
-          {mode === "android" ? (
+          {platform === "android" ? (
             <>
               <p className="mt-0.5 text-sm text-ink-muted">Abra o painel direto, sem passar pelo navegador.</p>
               <div className="mt-3 flex gap-2">
@@ -90,7 +114,7 @@ export function InstallPrompt() {
                   Instalar
                 </button>
                 <button
-                  onClick={dismiss}
+                  onClick={minimize}
                   className="rounded-lg px-3.5 py-2 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
                 >
                   Agora não
@@ -109,8 +133,9 @@ export function InstallPrompt() {
         </div>
 
         <button
-          onClick={dismiss}
-          aria-label="Fechar aviso"
+          onClick={minimize}
+          aria-label="Minimizar aviso"
+          title="Minimizar"
           className="h-6 w-6 shrink-0 text-ink-muted transition-colors hover:text-ink"
         >
           ✕
