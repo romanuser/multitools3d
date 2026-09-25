@@ -1,48 +1,20 @@
-E-mail de boas-vindas: automatico pros 100 primeiros + botao manual (abre o Gmail).
+Reenvio dos 3 arquivos que fazem a trava do checkbox funcionar de verdade.
 
-COMO FUNCIONA AGORA
+Se depois de aplicar o zip anterior o checkbox de quem ja recebeu ainda deixava
+selecionar e enviar de novo, o motivo mais provavel e esse arquivo (admin-accounts-list.tsx)
+nao ter substituido o antigo por completo -- ele precisa ter a versao com "disabled={!!sentAt}"
+no checkbox.
 
-1) AUTOMATICO (continua igual a antes)
-   Os primeiros 100 cadastros (por ordem de criacao) recebem, na hora que a conta e
-   criada: o plano sobe pra vip_vitalicio e chega um e-mail (via Resend, em segundo
-   plano, sem ninguem precisar clicar em nada) com o guia em PDF anexado.
-   Do 101 em diante, so o e-mail comum (sem o bonus), plano continua Free.
-   Isso ainda depende de configurar RESEND_API_KEY (veja o LEIA-ME anterior sobre isso).
-   Se nao configurar, essa parte fica em pausa silenciosa -- nao quebra o cadastro de
-   ninguem, so nao manda o e-mail automatico ate voce configurar.
-
-2) MANUAL, NO PAINEL ADMIN (isso e novo -- SUBSTITUI o botao antigo por conta)
-   Agora da pra marcar uma OU VARIAS contas ao mesmo tempo (checkbox por linha, e um
-   "selecionar todos" no topo). Ao clicar em "Enviar boas-vindas", abre uma aba nova
-   com o SEU Gmail (o que ja estiver logado no navegador), com:
-   - Assunto e corpo da mensagem ja preenchidos
-   - Todos os e-mails selecionados em Cco (assim um cliente nao ve o e-mail do outro)
-   Voce so confere e aperta Enviar la dentro do proprio Gmail.
-   NAO PRECISA de Resend nem de dominio verificado pra esse caminho manual.
-
-   Limitacao inevitavel: o navegador nao consegue anexar arquivo automaticamente no
-   compose do Gmail (bloqueio de seguranca do proprio Gmail). Por isso, em vez de
-   anexar o PDF, a mensagem manual traz um LINK pro guia (o cliente clica e baixa).
-
-   O checkbox "bonus dos 100 primeiros" ao lado do botao escolhe qual das duas
-   versoes do texto vai: com ou sem a parte do bonus/VIP vitalicio. Isso e so o TEXTO
-   -- marcar essa caixa NAO muda o plano da conta sozinho; se quiser que a conta
-   realmente vire VIP vitalicio, mude no seletor de plano ao lado, como sempre.
-
-ARQUIVOS NESTE ZIP
-- src/lib/email/welcome-text.ts -> NOVO: texto simples (sem HTML) usado no link do Gmail
-- src/app/admin/admin-accounts-list.tsx -> NOVO: substitui admin-account-row.tsx (apagado)
-- src/app/admin/page.tsx -> atualizado pra usar a lista nova
-- src/lib/admin/actions.ts -> removida a acao de enviar e-mail (nao e mais usada aqui,
-  o envio manual agora e 100% no navegador, sem servidor)
-- Os demais arquivos sao os mesmos do pacote anterior (automatico + guia em PDF),
-  incluidos de novo pra o zip ficar completo e autossuficiente.
-
-IMPORTANTE: se voce ja aplicou o zip anterior (multitool3d-email-boas-vindas.zip),
-o arquivo antigo src/app/admin/admin-account-row.tsx precisa ser APAGADO -- ele nao
-e mais usado e ficaria orfao. Copiar este zip por cima resolve isso, so nao esqueca
-de deletar esse arquivo se ele sobrar na pasta.
+Estes 3 arquivos formam o conjunto completo e consistente:
+- src/app/admin/page.tsx
+- src/app/admin/admin-accounts-list.tsx  <- o que trava o checkbox
+- src/lib/admin/actions.ts
 
 COMO APLICAR
-Copie tudo por cima do projeto (mantendo as pastas), apague
-src/app/admin/admin-account-row.tsx se ele existir, rode "npm install" e faca o deploy.
+1. Copie os 3 por cima do projeto (substituindo os que ja existem).
+2. Confirme que NAO sobrou o arquivo antigo src/app/admin/admin-account-row.tsx
+   (singular, sem o "s") -- se existir, apague.
+3. Commit + push.
+
+Depois do deploy: abra o Admin e veja se as contas ja marcadas como enviadas aparecem
+com o checkbox apagado/cinza, sem clique.
