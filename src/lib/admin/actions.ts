@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { sendWelcomeEmail } from "@/lib/email/welcome-email";
 
 // ---------------------------------------------------------------------
 // Confere se quem está chamando é mesmo um admin. Usa o cliente normal
@@ -42,5 +43,28 @@ export async function adminUpdatePlan(
   if (error) return { error: error.message };
 
   revalidatePath("/admin");
+  return {};
+}
+
+export async function adminSendWelcomeEmail(accountId: string, isPromo: boolean): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  // Busca com service_role: o admin pode mandar pra QUALQUER conta, e o
+  // e-mail em si (auth.users) não fica na tabela "accounts" pública.
+  const admin = createAdminClient();
+  const [{ data: account }, { data: authUser }] = await Promise.all([
+    admin.from("accounts").select("company_name").eq("id", accountId).maybeSingle(),
+    admin.auth.admin.getUserById(accountId),
+  ]);
+
+  const email = authUser?.user?.email;
+  if (!email) return { error: "Não achei o e-mail cadastrado dessa conta." };
+
+  try {
+    await sendWelcomeEmail({ toEmail: email, companyName: account?.company_name || "", isPromo });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Não consegui enviar o e-mail." };
+  }
+
   return {};
 }

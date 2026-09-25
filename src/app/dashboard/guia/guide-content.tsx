@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { Brand } from "@/components/brand";
-import { Icon, type IconName } from "@/components/icons";
+import { Icon } from "@/components/icons";
 
 // ---------------------------------------------------------------------
 // Conteúdo do guia de uso. Renderizado tanto na aba "Guia de uso" dentro
@@ -350,6 +349,14 @@ function Cover() {
           Como usar cada ferramenta da Multiferramenta 3D — da primeira conta até receber o
           pagamento da sua primeira venda.
         </p>
+        <a
+          href="/guia-multiferramenta-3d.pdf"
+          download
+          className="mt-6 inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-surface-raised transition-colors"
+        >
+          <Icon name="quote" size={15} />
+          Baixar em PDF
+        </a>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { handleNewAccountWelcomeEmail } from "@/lib/email/welcome-email";
 
 export type AuthState = { error?: string } | undefined;
 
@@ -106,11 +107,22 @@ export async function bootstrapAccount(userId: string, email: string, companyNam
 
   if (existing) return;
 
+  const finalCompanyName = companyName || email.split("@")[0];
+
   await supabase.from("accounts").insert({
     id: userId,
     email,
-    company_name: companyName || email.split("@")[0],
+    company_name: finalCompanyName,
   });
+
+  // Dispara o e-mail de boas-vindas automático. Só chega até aqui na
+  // CRIAÇÃO da conta (o "if (existing) return" acima garante isso), então
+  // nunca manda esse e-mail de novo pra quem já tem conta. Fica esperando
+  // terminar antes de seguir (em vez de "atirar e esquecer"), porque em
+  // ambiente serverless uma Promise solta pode ser interrompida assim que
+  // a resposta é enviada. Erros aqui dentro nunca vazam pra fora — ver
+  // handleNewAccountWelcomeEmail.
+  await handleNewAccountWelcomeEmail(userId, email, finalCompanyName);
 }
 
 function traduzErro(msg: string): string {
