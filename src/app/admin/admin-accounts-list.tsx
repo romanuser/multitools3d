@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { adminUpdatePlan, adminMarkWelcomeSent, adminResetWelcomeSent } from "@/lib/admin/actions";
 import { buildGmailComposeUrl } from "@/lib/email/welcome-text";
+import { WELCOME_PROMO_LIMIT } from "@/lib/email/promo-config";
 
 type Account = {
   id: string;
@@ -99,7 +100,7 @@ export function AdminAccountsList({ accounts }: { accounts: Account[] }) {
             onChange={(e) => setIsPromo(e.target.checked)}
             className="accent-amber"
           />
-          bônus dos 100 primeiros
+          bônus dos {WELCOME_PROMO_LIMIT} primeiros
         </label>
 
         <button
