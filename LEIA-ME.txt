@@ -1,20 +1,36 @@
-Reenvio dos 3 arquivos que fazem a trava do checkbox funcionar de verdade.
+Aviso de "Adicionar a tela de inicio" no celular -- estava faltando por completo.
 
-Se depois de aplicar o zip anterior o checkbox de quem ja recebeu ainda deixava
-selecionar e enviar de novo, o motivo mais provavel e esse arquivo (admin-accounts-list.tsx)
-nao ter substituido o antigo por completo -- ele precisa ter a versao com "disabled={!!sentAt}"
-no checkbox.
+Este pacote tinha ficado de fora nas aplicacoes anteriores. Contem:
 
-Estes 3 arquivos formam o conjunto completo e consistente:
-- src/app/admin/page.tsx
-- src/app/admin/admin-accounts-list.tsx  <- o que trava o checkbox
-- src/lib/admin/actions.ts
+- src/components/install-prompt.tsx  (NOVO)
+- src/app/manifest.ts                (NOVO)
+- src/app/layout.tsx                 (SUBSTITUI o seu -- e o seu arquivo atual, so
+                                       com o manifest/icones/InstallPrompt acrescentados)
+- public/icon-192.png                (NOVO)
+- public/icon-512.png                (SUBSTITUI o icone antigo, laptop cinza, pelo
+                                       novo, verde, com o simbolo de camadas)
+- public/apple-touch-icon.png        (NOVO)
+- public/favicon-32.png              (NOVO)
 
-COMO APLICAR
-1. Copie os 3 por cima do projeto (substituindo os que ja existem).
-2. Confirme que NAO sobrou o arquivo antigo src/app/admin/admin-account-row.tsx
-   (singular, sem o "s") -- se existir, apague.
-3. Commit + push.
+COMO APLICAR (pra nao duplicar pasta de novo)
+De dentro da pasta onde voce extraiu este zip, rode:
 
-Depois do deploy: abra o Admin e veja se as contas ja marcadas como enviadas aparecem
-com o checkbox apagado/cinza, sem clique.
+    Copy-Item -Path "src\*" -Destination "C:\Users\User\Desktop\WEBDEV Studio\SITES\multitool3d\src" -Recurse -Force
+    Copy-Item -Path "public\*" -Destination "C:\Users\User\Desktop\WEBDEV Studio\SITES\multitool3d\public" -Recurse -Force
+
+Troque o caminho de destino se a pasta do projeto nao estiver exatamente ai.
+
+DEPOIS DE COPIAR, confirme que nao apareceu pasta duplicada:
+
+    Get-ChildItem -Directory
+    (deve mostrar so: .netlify, .next, node_modules, public, src -- nada de "app"
+    ou "components" ou "src" soltos)
+
+Depois, commit + push como sempre.
+
+COMO TESTAR DEPOIS DO DEPLOY
+- No iPhone (Safari): abra o site, espere uns 3 segundos -- o aviso deve aparecer
+  sozinho, no rodape da tela.
+- No Android (Chrome): pode nao aparecer na primeira visita -- isso e o proprio
+  Chrome decidindo, nao e bug. As vezes precisa visitar de novo ou usar por um
+  tempinho antes dele oferecer.
