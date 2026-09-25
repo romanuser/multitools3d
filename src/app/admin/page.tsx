@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { AdminAccountRow } from "./admin-account-row";
+import { AdminAccountsList } from "./admin-accounts-list";
 
 export default async function AdminPage({
   searchParams,
@@ -42,18 +42,12 @@ export default async function AdminPage({
         <h1 className="font-display text-2xl text-ink mt-4 mb-1">Clientes</h1>
         <p className="text-sm text-ink-muted mb-8">
           {accounts?.length ?? 0} conta(s) cadastrada(s). Você pode ajustar o plano manualmente
-          aqui — útil pra pagamentos combinados por fora, cortesias ou correções.
+          aqui — útil pra pagamentos combinados por fora, cortesias ou correções. Selecione uma ou
+          mais contas e clique em &quot;Enviar boas-vindas&quot; pra abrir seu Gmail já com a
+          mensagem e os destinatários prontos.
         </p>
 
-        <div className="border border-line rounded-2xl overflow-hidden mb-10">
-          <div className="grid grid-cols-[1fr_auto] gap-4 px-5 py-3 text-xs text-ink-muted border-b border-line bg-surface">
-            <span>Conta</span>
-            <span>Plano</span>
-          </div>
-          {(accounts ?? []).map((account) => (
-            <AdminAccountRow key={account.id} account={account} />
-          ))}
-        </div>
+        <AdminAccountsList accounts={accounts ?? []} />
 
         <section>
           <h2 className="font-display text-lg text-ink mb-1">Frete (Melhor Envio)</h2>

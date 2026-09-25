@@ -1,40 +1,48 @@
-E-mail de boas-vindas (automatico pros 100 primeiros cadastros + botao manual no Admin).
+E-mail de boas-vindas: automatico pros 100 primeiros + botao manual (abre o Gmail).
 
-O QUE MUDOU
-- Os primeiros 100 cadastros (contando por ordem de criacao) recebem automaticamente,
-  assim que a conta e criada: o plano sobe pra vip_vitalicio e chega um e-mail de boas-vindas
-  com o guia em PDF anexado, avisando do bonus.
-- Do 101 em diante, a conta continua Free e recebe so o e-mail de boas-vindas (sem o bonus).
-- Isso acontece uma unica vez por conta -- contas que ja existem hoje (antes de aplicar isso)
-  NUNCA disparam esse e-mail automatico, so as que forem criadas dai pra frente.
-- No painel Admin, cada cliente agora tem um botao "Enviar boas-vindas" (pra reenviar manualmente
-  a qualquer momento) com uma caixinha "bonus dos 100 primeiros" pra escolher qual versao do
-  texto mandar.
-- A pagina /dashboard/guia ganhou um botao "Baixar em PDF" no topo.
+COMO FUNCIONA AGORA
 
-ANTES DE FUNCIONAR DE VERDADE, VOCE PRECISA:
-1. Criar uma conta gratis em https://resend.com
-2. Gerar uma chave em https://resend.com/api-keys
-3. Adicionar no .env.local (e nas variaveis de ambiente da Netlify):
-   RESEND_API_KEY=a_chave_que_voce_gerou
-4. Verificar um dominio proprio em https://resend.com/domains (adicionar os registros de DNS
-   que a Resend mostrar). SEM isso, o Resend so entrega e-mail pra sua PROPRIA conta -- pra
-   mandar pro cliente real, o dominio precisa estar verificado.
-5. Depois de verificar, adicione tambem:
-   RESEND_FROM_EMAIL=Multiferramenta 3D <contato@seudominio.com>
-   (troque contato@seudominio.com por um endereco do dominio que voce verificou)
+1) AUTOMATICO (continua igual a antes)
+   Os primeiros 100 cadastros (por ordem de criacao) recebem, na hora que a conta e
+   criada: o plano sobe pra vip_vitalicio e chega um e-mail (via Resend, em segundo
+   plano, sem ninguem precisar clicar em nada) com o guia em PDF anexado.
+   Do 101 em diante, so o e-mail comum (sem o bonus), plano continua Free.
+   Isso ainda depende de configurar RESEND_API_KEY (veja o LEIA-ME anterior sobre isso).
+   Se nao configurar, essa parte fica em pausa silenciosa -- nao quebra o cadastro de
+   ninguem, so nao manda o e-mail automatico ate voce configurar.
 
-ARQUIVOS
-- package.json / package-lock.json -> adicionaram a dependencia "resend"
-- .env.local.example -> documenta as duas variaveis novas (so exemplo, nao usado em producao)
-- public/guia-multiferramenta-3d.pdf -> o guia que vai anexado no e-mail (e no botao "Baixar em PDF")
-- src/lib/email/resend.ts -> cliente do Resend
-- src/lib/email/welcome-email.ts -> o texto do e-mail (as duas versoes) e a logica do bonus
-- src/lib/admin/actions.ts -> acao "adminSendWelcomeEmail" (botao manual)
-- src/lib/auth/actions.ts -> dispara o e-mail automatico na hora que a conta e criada
-- src/app/admin/admin-account-row.tsx -> botao + checkbox no painel Admin
-- src/app/dashboard/guia/guide-content.tsx -> botao "Baixar em PDF"
+2) MANUAL, NO PAINEL ADMIN (isso e novo -- SUBSTITUI o botao antigo por conta)
+   Agora da pra marcar uma OU VARIAS contas ao mesmo tempo (checkbox por linha, e um
+   "selecionar todos" no topo). Ao clicar em "Enviar boas-vindas", abre uma aba nova
+   com o SEU Gmail (o que ja estiver logado no navegador), com:
+   - Assunto e corpo da mensagem ja preenchidos
+   - Todos os e-mails selecionados em Cco (assim um cliente nao ve o e-mail do outro)
+   Voce so confere e aperta Enviar la dentro do proprio Gmail.
+   NAO PRECISA de Resend nem de dominio verificado pra esse caminho manual.
+
+   Limitacao inevitavel: o navegador nao consegue anexar arquivo automaticamente no
+   compose do Gmail (bloqueio de seguranca do proprio Gmail). Por isso, em vez de
+   anexar o PDF, a mensagem manual traz um LINK pro guia (o cliente clica e baixa).
+
+   O checkbox "bonus dos 100 primeiros" ao lado do botao escolhe qual das duas
+   versoes do texto vai: com ou sem a parte do bonus/VIP vitalicio. Isso e so o TEXTO
+   -- marcar essa caixa NAO muda o plano da conta sozinho; se quiser que a conta
+   realmente vire VIP vitalicio, mude no seletor de plano ao lado, como sempre.
+
+ARQUIVOS NESTE ZIP
+- src/lib/email/welcome-text.ts -> NOVO: texto simples (sem HTML) usado no link do Gmail
+- src/app/admin/admin-accounts-list.tsx -> NOVO: substitui admin-account-row.tsx (apagado)
+- src/app/admin/page.tsx -> atualizado pra usar a lista nova
+- src/lib/admin/actions.ts -> removida a acao de enviar e-mail (nao e mais usada aqui,
+  o envio manual agora e 100% no navegador, sem servidor)
+- Os demais arquivos sao os mesmos do pacote anterior (automatico + guia em PDF),
+  incluidos de novo pra o zip ficar completo e autossuficiente.
+
+IMPORTANTE: se voce ja aplicou o zip anterior (multitool3d-email-boas-vindas.zip),
+o arquivo antigo src/app/admin/admin-account-row.tsx precisa ser APAGADO -- ele nao
+e mais usado e ficaria orfao. Copiar este zip por cima resolve isso, so nao esqueca
+de deletar esse arquivo se ele sobrar na pasta.
 
 COMO APLICAR
-Copie tudo por cima do projeto (mantendo as pastas), rode "npm install" (por causa do
-package.json novo) e faca o deploy. Depois, complete os passos 1 a 5 acima.
+Copie tudo por cima do projeto (mantendo as pastas), apague
+src/app/admin/admin-account-row.tsx se ele existir, rode "npm install" e faca o deploy.
