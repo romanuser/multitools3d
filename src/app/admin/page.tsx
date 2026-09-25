@@ -29,7 +29,7 @@ export default async function AdminPage({
   const admin = createAdminClient();
   const { data: accounts } = await admin
     .from("accounts")
-    .select("id, email, company_name, plan, plan_expires_at, is_admin")
+    .select("id, email, company_name, plan, plan_expires_at, is_admin, welcome_email_sent_at")
     .order("email");
 
   return (
