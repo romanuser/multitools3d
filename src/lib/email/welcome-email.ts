@@ -1,6 +1,7 @@
 import "server-only";
 import { getResend, getFromEmail } from "./resend";
 import { getSiteUrl } from "@/lib/plans/infinitepay";
+import { WELCOME_PROMO_LIMIT } from "./promo-config";
 
 // ---------------------------------------------------------------------
 // E-mail de boas-vindas, disparado manualmente pelo admin (painel Admin,
@@ -13,7 +14,7 @@ function welcomeEmailHtml(input: { toEmail: string; companyName: string; isPromo
 
   const promoParagraphs = `
       <p style="color:#c7d1cb;font-size:15px;line-height:1.6;margin:0 0 16px;">
-        Obrigado por ser um dos nossos <strong style="color:#e9efeb;">100 primeiros usuários</strong>
+        Obrigado por ser um dos nossos <strong style="color:#e9efeb;">${WELCOME_PROMO_LIMIT} primeiros usuários</strong>
         a se cadastrar na Multiferramenta 3D. Como brinde pelo feito, subimos seu plano para o
         <strong style="color:#e9efeb;">VIP vitalício</strong>, que te dá direito, além de todas as
         ferramentas do plano Free, a um e-commerce próprio pra vender suas impressões online.
@@ -105,10 +106,6 @@ export async function sendWelcomeEmail(input: { toEmail: string; companyName: st
   if (error) throw new Error(error.message);
 }
 
-// Quantas contas cadastradas ganham o brinde de plano VIP vitalício
-// automático. Muda só aqui se um dia quiser encerrar ou esticar a promoção.
-export const WELCOME_PROMO_LIMIT = 100;
-
 // ---------------------------------------------------------------------
 // Chamado uma única vez, na hora em que uma conta é CRIADA (dentro de
 // bootstrapAccount, logo depois do insert em "accounts" — nunca em
@@ -132,6 +129,10 @@ export async function handleNewAccountWelcomeEmail(accountId: string, email: str
     }
 
     await sendWelcomeEmail({ toEmail: email, companyName, isPromo });
+
+    // Marca como enviado pra esse mesmo aviso aparecer no painel Admin —
+    // é o que evita mandar de novo manualmente sem perceber que já foi.
+    await admin.from("accounts").update({ welcome_email_sent_at: new Date().toISOString() }).eq("id", accountId);
   } catch (err) {
     console.error("[welcome-email] falha ao processar boas-vindas automáticas:", err);
   }

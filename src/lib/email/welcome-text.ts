@@ -2,6 +2,8 @@
 // Mesmo texto do e-mail de boas-vindas, em versão simples (sem HTML),
 // pra usar no link "mailto"/Gmail. Sem "server-only": este arquivo roda
 // no navegador do admin.
+import { WELCOME_PROMO_LIMIT } from "./promo-config";
+
 // ---------------------------------------------------------------------
 
 export function welcomeSubject(isPromo: boolean) {
@@ -14,7 +16,7 @@ export function welcomeBody(siteUrl: string, isPromo: boolean) {
   const guiaUrl = `${siteUrl}/guia-multiferramenta-3d.pdf`;
 
   const intro = isPromo
-    ? `Obrigado por ser um dos nossos 100 primeiros usuários a se cadastrar na Multiferramenta 3D. Como brinde pelo feito, subimos seu plano para o VIP vitalício, que te dá direito, além de todas as ferramentas do plano Free, a um e-commerce próprio pra vender suas impressões online.\n\nPreparamos um guia de como explorar melhor as ferramentas: ${guiaUrl}`
+    ? `Obrigado por ser um dos nossos ${WELCOME_PROMO_LIMIT} primeiros usuários a se cadastrar na Multiferramenta 3D. Como brinde pelo feito, subimos seu plano para o VIP vitalício, que te dá direito, além de todas as ferramentas do plano Free, a um e-commerce próprio pra vender suas impressões online.\n\nPreparamos um guia de como explorar melhor as ferramentas: ${guiaUrl}`
     : `Sua conta na Multiferramenta 3D foi criada com sucesso. Preparamos um guia de como explorar melhor as ferramentas: ${guiaUrl}`;
 
   return [
