@@ -39,7 +39,12 @@ export default async function AdminPage({
           ← Painel
         </Link>
 
-        <h1 className="font-display text-2xl text-ink mt-4 mb-1">Clientes</h1>
+        <div className="flex items-center justify-between mt-4 mb-1">
+          <h1 className="font-display text-2xl text-ink">Clientes</h1>
+          <Link href="/admin/stl-packs" className="text-sm text-amber hover:underline">
+            Gerenciar pacote de STLs →
+          </Link>
+        </div>
         <p className="text-sm text-ink-muted mb-8">
           {accounts?.length ?? 0} conta(s) cadastrada(s). Você pode ajustar o plano manualmente
           aqui — útil pra pagamentos combinados por fora, cortesias ou correções. Selecione uma ou

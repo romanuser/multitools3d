@@ -1,36 +1,51 @@
-Aviso de "Adicionar a tela de inicio" no celular -- estava faltando por completo.
+Aba "Pacote de STLs" v3 -- de volta pro Supabase Storage (sem precisar de
+cartao de credito), robo 100% aleatorio (sem tendencia).
 
-Este pacote tinha ficado de fora nas aplicacoes anteriores. Contem:
+POR QUE VOLTOU PRO SUPABASE
+O Cloudflare R2 exige cadastrar um cartao de credito mesmo no plano gratuito.
+Sem isso disponível agora, voltamos pro Supabase Storage -- que voce ja tem
+configurado, sem pedir nada novo.
 
-- src/components/install-prompt.tsx  (NOVO)
-- src/app/manifest.ts                (NOVO)
-- src/app/layout.tsx                 (SUBSTITUI o seu -- e o seu arquivo atual, so
-                                       com o manifest/icones/InstallPrompt acrescentados)
-- public/icon-192.png                (NOVO)
-- public/icon-512.png                (SUBSTITUI o icone antigo, laptop cinza, pelo
-                                       novo, verde, com o simbolo de camadas)
-- public/apple-touch-icon.png        (NOVO)
-- public/favicon-32.png              (NOVO)
+O QUE ISSO MUDA NA PRATICA
+- Espaco: 1GB gratis (compartilhado com o resto do app)
+- Trafego de download: 5GB gratis por mes
+- Se um dia isso apertar (muito download por dia), da pra migrar so essa
+  parte pro R2 depois, quando tiver cartao -- o código foi feito separado
+  o suficiente pra essa troca ser rapida.
 
-COMO APLICAR (pra nao duplicar pasta de novo)
-De dentro da pasta onde voce extraiu este zip, rode:
+O upload continua indo DIRETO do navegador pro Storage (sem passar pelo
+servidor do site), pra nao esbarrar no limite de tamanho de arquivo das
+funcoes da Netlify -- isso nao mudou, so troca o destino final.
 
-    Copy-Item -Path "src\*" -Destination "C:\Users\User\Desktop\WEBDEV Studio\SITES\multitool3d\src" -Recurse -Force
-    Copy-Item -Path "public\*" -Destination "C:\Users\User\Desktop\WEBDEV Studio\SITES\multitool3d\public" -Recurse -Force
+PASSO 1 -- RODAR O SQL NO SUPABASE (se ainda nao rodou)
+Arquivo em anexo: migration.sql -- se ja rodou da vez anterior, pule esse passo.
 
-Troque o caminho de destino se a pasta do projeto nao estiver exatamente ai.
+PASSO 2 -- CRIAR O BUCKET NO SUPABASE STORAGE
+No Supabase -> Storage -> New bucket:
+  Nome: stl-packs
+  Public: NAO (privado -- o download so acontece por link temporario)
 
-DEPOIS DE COPIAR, confirme que nao apareceu pasta duplicada:
+PASSO 3 -- VARIAVEL DE AMBIENTE
+Só precisa desta (as do Cloudflare R2 e do Mercado Livre nao sao mais usadas,
+pode ignorar/remover se ja tinha colocado):
 
-    Get-ChildItem -Directory
-    (deve mostrar so: .netlify, .next, node_modules, public, src -- nada de "app"
-    ou "components" ou "src" soltos)
+    CRON_SECRET=escolha-uma-senha-aleatoria-longa-aqui
 
-Depois, commit + push como sempre.
+(Se ja configurou isso numa tentativa anterior, nao precisa mudar.)
 
-COMO TESTAR DEPOIS DO DEPLOY
-- No iPhone (Safari): abra o site, espere uns 3 segundos -- o aviso deve aparecer
-  sozinho, no rodape da tela.
-- No Android (Chrome): pode nao aparecer na primeira visita -- isso e o proprio
-  Chrome decidindo, nao e bug. As vezes precisa visitar de novo ou usar por um
-  tempinho antes dele oferecer.
+COMO TESTAR
+1. Va em /admin/stl-packs
+2. Suba pelo menos 3 arquivos
+3. Clique em "Publicar de hoje agora"
+4. Va em /dashboard/stl-packs e veja os arquivos aparecerem, com download
+   funcionando de verdade
+
+COMO APLICAR
+1. Rode o SQL (passo 1, se ainda nao rodou)
+2. Crie o bucket (passo 2)
+3. Adicione o CRON_SECRET (passo 3, se ainda nao tem)
+4. Copie os arquivos por cima do projeto (Copy-Item -Force, nunca arraste
+   pelo Explorador)
+5. npm install (dessa vez REMOVE as dependencias do R2 que nao sao mais
+   usadas -- o npm install cuida disso sozinho a partir do package.json)
+6. Commit + push

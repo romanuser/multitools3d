@@ -109,6 +109,7 @@ export function DashboardSidebar({
     { href: "/dashboard/gerador-stl-curvo", label: "Gerador de texto STL", icon: "type" },
     { href: "/dashboard/modelador-3d", label: "Modelador 3D", icon: "cube" },
     { href: "/dashboard/foto-para-3d", label: "Foto → Modelo 3D", icon: "camera", soon: !FEATURES.photoTo3D },
+    { href: "/dashboard/stl-packs", label: "Pacote de STLs", icon: "layers" },
   ];
 
   const vipItems: NavItem[] = [{ href: "/dashboard/loja", label: "Loja virtual", icon: "store", locked: !hasVip }];
