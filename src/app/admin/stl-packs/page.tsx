@@ -28,7 +28,7 @@ export default async function AdminStlPacksPage() {
         <Link href="/admin" className="text-sm text-ink-muted hover:text-ink">
           ← Clientes
         </Link>
-        <h1 className="font-display text-2xl text-ink mt-4 mb-1">Pacote de STLs</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Pacote de STLs</h1>
         <p className="text-sm text-ink-muted mb-8">
           {files?.length ?? 0} arquivo(s) no pacote. O robô publica automaticamente todo dia — o
           botão abaixo dispara a mesma seleção na hora, útil pra testar.

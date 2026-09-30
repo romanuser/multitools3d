@@ -33,7 +33,7 @@ export default async function PlanoPage({
           ← Painel
         </Link>
 
-        <h1 className="font-display text-2xl text-ink mt-4 mb-1">Seu plano</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Seu plano</h1>
         <p className="text-sm text-ink-muted mb-6">
           Plano atual: <span className="text-ink font-medium">{PLAN_NAMES[plan]}</span>
           {plan === "vip_mensal" && plan_expires_at && (

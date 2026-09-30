@@ -10,7 +10,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm bg-surface border border-line rounded-2xl p-8">
-        <h1 className="font-display text-xl text-ink mb-1">Entrar</h1>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-ink mb-1">Entrar</h1>
         <p className="text-sm text-ink-muted mb-6">Acesse o painel da sua ferramenta 3D.</p>
 
         <form action={signInWithGoogle}>

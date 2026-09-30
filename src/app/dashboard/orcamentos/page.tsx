@@ -34,7 +34,7 @@ export default async function OrcamentosPage() {
 
         <div className="flex items-start justify-between mt-4 mb-8 gap-4 flex-wrap">
           <div>
-            <h1 className="font-display text-2xl text-ink">Orçamentos</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Orçamentos</h1>
             <p className="text-sm text-ink-muted max-w-md">
               Calcule o preço da impressão e gere um orçamento em PDF limpo pro cliente —
               os custos e a margem ficam só com você.

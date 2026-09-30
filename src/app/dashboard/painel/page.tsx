@@ -79,7 +79,7 @@ export default async function PainelGeralPage() {
         <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
           ← Painel
         </Link>
-        <h1 className="font-display text-2xl text-ink mt-4 mb-1">Painel geral</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Painel geral</h1>
         <p className="text-sm text-ink-muted mb-8">
           Como está a operação agora: impressoras, estoque e o que precisa da sua atenção.
         </p>

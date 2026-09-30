@@ -21,7 +21,7 @@ export default async function FotoPara3DPage() {
         <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
           ← Painel
         </Link>
-        <h1 className="font-display text-2xl text-ink mt-2">Foto → Modelo 3D</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-2">Foto → Modelo 3D</h1>
         <p className="text-sm text-ink-muted mb-4">
           Gera um modelo 3D a partir de uma foto usando uma IA aberta e gratuita, e calibra o
           tamanho real usando um objeto de referência (moeda, régua etc.) na mesma foto. Como usa

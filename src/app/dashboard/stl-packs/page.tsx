@@ -45,7 +45,7 @@ export default async function StlPacksPage() {
   return (
     <main className="min-h-screen px-6 py-10 md:px-10">
       <div className="max-w-4xl mx-auto">
-        <h1 className="font-display text-2xl text-ink mb-1">Pacote de STLs</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mb-1">Pacote de STLs</h1>
         <p className="text-sm text-ink-muted mb-8">
           Todo dia, novos arquivos escolhidos do nosso pacote — priorizando o que está em alta.
         </p>

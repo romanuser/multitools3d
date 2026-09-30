@@ -69,7 +69,7 @@ export default async function LojaPage() {
         <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
           ← Painel
         </Link>
-        <h1 className="font-display text-2xl text-ink mt-4 mb-1">Loja virtual</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Loja virtual</h1>
         <p className="text-sm text-ink-muted mb-8">
           Cadastre seus produtos e compartilhe o link da sua loja com os clientes. As vendas caem
           direto na sua conta InfinitePay.

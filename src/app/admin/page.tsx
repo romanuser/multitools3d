@@ -40,7 +40,7 @@ export default async function AdminPage({
         </Link>
 
         <div className="flex items-center justify-between mt-4 mb-1">
-          <h1 className="font-display text-2xl text-ink">Clientes</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Clientes</h1>
           <Link href="/admin/stl-packs" className="text-sm text-amber hover:underline">
             Gerenciar pacote de STLs →
           </Link>

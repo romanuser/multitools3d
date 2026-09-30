@@ -15,7 +15,7 @@ export default async function StlCurvoPage() {
         <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
           ← Painel
         </Link>
-        <h1 className="font-display text-2xl text-ink mt-2">Gerador de texto STL</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-2">Gerador de texto STL</h1>
         <p className="text-sm text-ink-muted mb-4">
           Crie nomes curvados para copos, canecas e porta-latas. Carregue uma fonte TTF/OTF e
           exporte o STL.

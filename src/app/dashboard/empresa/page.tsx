@@ -24,7 +24,7 @@ export default async function EmpresaPage() {
           ← Painel
         </Link>
 
-        <h1 className="font-display text-2xl text-ink mt-4 mb-1">Dados da empresa</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Dados da empresa</h1>
         <p className="text-sm text-ink-muted mb-8">
           Esse nome e logo aparecem no cabeçalho dos orçamentos em PDF que você enviar pros
           seus clientes.

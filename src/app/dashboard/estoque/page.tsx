@@ -24,7 +24,7 @@ export default async function EstoquePage() {
         <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
           ← Painel
         </Link>
-        <h1 className="font-display text-2xl text-ink mt-4 mb-1">Estoque de filamento</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Estoque de filamento</h1>
         <p className="text-sm text-ink-muted mb-8">
           Cadastre seus rolos de filamento. O saldo é descontado sozinho quando uma impressão é
           concluída na fila.
