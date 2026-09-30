@@ -18,6 +18,23 @@
   --warn: #f5a524;
 }
 
+/* Tema claro — ativado colocando data-theme="light" na tag <html>.
+   Sem esse atributo (ou com "dark"), continua no escuro de sempre. */
+:root[data-theme="light"] {
+  --paper: #f6f8f7;
+  --surface: #ffffff;
+  --surface-raised: #eef2f0;
+  --ink: #101a15;
+  --ink-muted: #5b6b62;
+  --line: #dde4e0;
+  --amber: #1f9d57;
+  --amber-soft: #e6f5ec;
+  --good: #1f9d57;
+  --danger: #dc2626;
+  --on-accent: #ffffff;
+  --warn: #b3690a;
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-surface: var(--surface);

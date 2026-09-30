@@ -36,6 +36,8 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  // "apple-mobile-web-app-capable": some navegadores antigos só leem essa
+  // meta tag específica da Apple, mesmo com o manifest presente.
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
@@ -52,6 +54,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`h-full antialiased ${bricolage.variable} ${plexSans.variable} ${plexMono.variable}`}>
       <body className="min-h-full flex flex-col font-sans bg-paper text-ink">
+        {/* Aplica o tema salvo ANTES do primeiro paint, pra não piscar o
+            tema errado por uma fração de segundo ao carregar a página. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("mf3d-theme");if(t==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}`,
+          }}
+        />
         {children}
         <AssistantWidget />
         <InstallPrompt />

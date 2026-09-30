@@ -54,6 +54,12 @@ export const createTools: Tool[] = [
     icon: "cube",
   },
   {
+    title: "Pacote de STLs",
+    description: "Novos arquivos escolhidos do nosso pacote, todo dia.",
+    href: "/dashboard/stl-packs",
+    icon: "layers",
+  },
+  {
     title: "Foto → Modelo 3D",
     description: "Transforme uma foto em modelo 3D com IA.",
     href: "/dashboard/foto-para-3d",
@@ -82,63 +88,59 @@ export const salesTools: Tool[] = [
 export function ToolGroup({ title, tools, hasVip }: { title: string; tools: Tool[]; hasVip: boolean }) {
   return (
     <section aria-label={title}>
-      <h2 className="text-sm font-medium text-ink-muted mb-2.5 px-1">{title}</h2>
-      <ul className="rounded-2xl border border-line bg-surface divide-y divide-line overflow-hidden">
+      <h2 className="text-sm font-medium text-ink-muted mb-3 px-1">{title}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {tools.map((tool) => (
-          <li key={tool.title}>
-            <ToolRow tool={tool} hasVip={hasVip} />
-          </li>
+          <ToolCard key={tool.title} tool={tool} hasVip={hasVip} />
         ))}
-      </ul>
+      </div>
     </section>
   );
 }
 
-function ToolRow({ tool, hasVip }: { tool: Tool; hasVip: boolean }) {
+function ToolCard({ tool, hasVip }: { tool: Tool; hasVip: boolean }) {
   const locked = tool.vip && !hasVip;
 
   const body = (
     <>
-      <span
-        className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
-          tool.soon
-            ? "border-line bg-paper/40 text-ink-muted/60"
-            : "border-line bg-surface-raised text-amber group-hover:border-amber/40 transition-colors"
-        }`}
-      >
-        <Icon name={tool.icon} size={20} />
-      </span>
+      <div className="flex items-start justify-between">
+        <span
+          className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${
+            tool.soon
+              ? "border-line bg-paper/40 text-ink-muted/60"
+              : "border-line bg-surface-raised text-amber group-hover:border-amber/40 transition-colors"
+          }`}
+        >
+          <Icon name={tool.icon} size={22} />
+        </span>
 
-      <span className="min-w-0 flex-1">
-        <span className={`block text-[15px] font-medium ${tool.soon ? "text-ink-muted" : "text-ink"}`}>
-          {tool.title}
-        </span>
-        <span className={`block text-sm mt-0.5 ${tool.soon ? "text-ink-muted/70" : "text-ink-muted"}`}>
-          {tool.description}
-        </span>
-      </span>
+        {tool.soon ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-xs font-medium text-warn shrink-0">
+            <Icon name="wrench" size={11} />
+            Em breve
+          </span>
+        ) : locked ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber/30 px-2.5 py-1 text-xs font-medium text-amber shrink-0">
+            <Icon name="lock" size={11} />
+            VIP
+          </span>
+        ) : (
+          <Icon
+            name="chevron"
+            size={18}
+            className="text-ink-muted/40 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-ink"
+          />
+        )}
+      </div>
 
-      {tool.soon ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-xs font-medium text-warn shrink-0">
-          <Icon name="wrench" size={12} />
-          Em desenvolvimento
-        </span>
-      ) : locked ? (
-        <span className="inline-flex items-center gap-1 rounded-full border border-amber/30 px-2.5 py-1 text-xs font-medium text-amber shrink-0">
-          <Icon name="lock" size={12} />
-          VIP
-        </span>
-      ) : (
-        <Icon
-          name="chevron"
-          size={18}
-          className="text-ink-muted/50 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-ink"
-        />
-      )}
+      <p className={`text-[15px] font-medium mt-4 ${tool.soon ? "text-ink-muted" : "text-ink"}`}>{tool.title}</p>
+      <p className={`text-sm mt-1 leading-relaxed ${tool.soon ? "text-ink-muted/70" : "text-ink-muted"}`}>
+        {tool.description}
+      </p>
     </>
   );
 
-  const base = "flex items-center gap-4 px-5 py-4";
+  const base = "flex flex-col rounded-2xl border border-line bg-surface p-5 h-full";
 
   if (tool.soon) {
     return (
@@ -151,7 +153,7 @@ function ToolRow({ tool, hasVip }: { tool: Tool; hasVip: boolean }) {
   return (
     <Link
       href={locked ? "/dashboard/plano" : tool.href}
-      className={`${base} group hover:bg-surface-raised/50 transition-colors`}
+      className={`${base} group hover:border-amber/30 hover:bg-surface-raised/40 transition-colors`}
     >
       {body}
     </Link>

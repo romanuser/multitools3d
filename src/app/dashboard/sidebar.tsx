@@ -7,6 +7,7 @@ import { signOut } from "@/lib/auth/actions";
 import { FEATURES } from "@/lib/features";
 import { Icon, type IconName } from "@/components/icons";
 import { Brand } from "@/components/brand";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type NavItem = {
   href: string;
@@ -171,12 +172,15 @@ export function DashboardSidebar({
         </div>
       </nav>
 
-      <form action={signOut} className="p-3 border-t border-line">
-        <button className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-ink-muted hover:text-ink hover:bg-surface-raised/60 transition-colors">
-          <Icon name="logout" className="shrink-0" />
-          Sair
-        </button>
-      </form>
+      <div className="p-3 border-t border-line space-y-0.5">
+        <ThemeToggle />
+        <form action={signOut}>
+          <button className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-ink-muted hover:text-ink hover:bg-surface-raised/60 transition-colors">
+            <Icon name="logout" className="shrink-0" />
+            Sair
+          </button>
+        </form>
+      </div>
     </>
   );
 
