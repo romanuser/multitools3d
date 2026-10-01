@@ -9,14 +9,11 @@ const freeFeatures = [
   "Estoque de filamento com alerta de saldo baixo",
   "Cadastro de impressoras com foto",
   "Fila de impressão com desconto automático de estoque",
-];
-
-const vipFeatures = [
-  "Tudo do plano Free",
-  "Gerador de texto STL",
-  "Modelador 3D com exportação de STL",
+  "Gerador de texto STL e Modelador 3D",
   "Loja virtual própria, com pagamento direto na sua conta",
 ];
+
+const vipFeatures = ["Tudo do plano Free", "Pacote de STLs — arquivos novos escolhidos pra você, todo dia"];
 
 const btnPrimary =
   "inline-flex items-center justify-center rounded-lg bg-amber px-5 py-3 text-sm font-semibold text-on-accent transition hover:brightness-110";
@@ -63,6 +60,9 @@ function Nav() {
           <a href="#loja" className="transition-colors hover:text-ink">
             Loja virtual
           </a>
+          <Link href="/vitrine" className="transition-colors hover:text-ink">
+            Ver lojas
+          </Link>
           <a href="#planos" className="transition-colors hover:text-ink">
             Planos
           </a>
@@ -526,14 +526,14 @@ function Store() {
       <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-6 py-24 lg:grid-cols-2">
         <div>
           <span className="inline-flex items-center rounded-full border border-amber/30 px-2.5 py-1 text-xs font-medium text-amber">
-            Plano VIP
+            Incluído no plano Free
           </span>
           <h2 className="mt-5 font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
             Sua própria loja. Seu link. Seu cliente.
           </h2>
           <p className="mt-4 max-w-lg text-lg leading-relaxed text-ink-muted">
-            Venda o que você imprime sem depender de marketplace. Cada pedido já nasce dentro do painel,
-            ligado à fila e ao estoque.
+            Venda o que você imprime sem depender de marketplace, sem pagar nada por isso. Cada pedido já
+            nasce dentro do painel, ligado à fila e ao estoque.
           </p>
 
           <ul className="mt-9 space-y-5">
@@ -634,7 +634,7 @@ function Pricing() {
           <div className="flex flex-col rounded-2xl border border-amber/50 bg-surface-raised p-8 shadow-[0_0_0_1px_rgba(46,204,113,0.08),0_30px_80px_-40px_rgba(46,204,113,0.35)]">
             <h3 className="font-display text-xl font-semibold">VIP</h3>
             <p className="mt-4 flex items-baseline gap-1">
-              <span className="font-display text-4xl font-semibold tracking-tight">R$ 29,90</span>
+              <span className="font-display text-4xl font-semibold tracking-tight">R$ 9,99</span>
               <span className="text-sm text-ink-muted">por mês</span>
             </p>
             <FeatureList items={vipFeatures} />
