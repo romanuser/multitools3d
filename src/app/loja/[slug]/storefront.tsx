@@ -12,9 +12,25 @@ type Product = {
   price: number;
   stock: number | null;
   image_url: string | null;
+  available_colors: string[];
+  customizable: boolean;
+  customization_price: number;
+  category: string | null;
+};
+
+type CartLine = {
+  key: string;
+  productId: string;
+  color: string | null;
+  customized: boolean;
+  quantity: number;
 };
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function lineKey(productId: string, color: string | null, customized: boolean) {
+  return `${productId}::${color || ""}::${customized ? 1 : 0}`;
+}
 
 export function Storefront({
   accountId,
@@ -31,36 +47,51 @@ export function Storefront({
   products: Product[];
   customerEmail: string | null;
 }) {
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<Record<string, CartLine>>({});
   const [showCheckout, setShowCheckout] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  function addToCart(productId: string) {
-    setCart((c) => ({ ...c, [productId]: (c[productId] || 0) + 1 }));
+  const categories = useMemo(
+    () => Array.from(new Set(products.map((p) => p.category).filter((c): c is string => !!c))).sort(),
+    [products]
+  );
+  const visibleProducts = selectedCategory ? products.filter((p) => p.category === selectedCategory) : products;
+
+  function addToCart(productId: string, color: string | null = null, customized = false) {
+    const key = lineKey(productId, color, customized);
+    setCart((c) => ({
+      ...c,
+      [key]: { key, productId, color, customized, quantity: (c[key]?.quantity || 0) + 1 },
+    }));
   }
-  function changeQty(productId: string, qty: number) {
+  function changeQty(key: string, qty: number) {
     setCart((c) => {
       if (qty <= 0) {
         const next = { ...c };
-        delete next[productId];
+        delete next[key];
         return next;
       }
-      return { ...c, [productId]: qty };
+      return { ...c, [key]: { ...c[key], quantity: qty } };
     });
   }
 
   const cartItems = useMemo(
     () =>
-      Object.entries(cart)
-        .map(([productId, quantity]) => {
-          const product = products.find((p) => p.id === productId);
-          return product ? { product, quantity } : null;
+      Object.values(cart)
+        .map((line) => {
+          const product = products.find((p) => p.id === line.productId);
+          return product ? { line, product } : null;
         })
-        .filter((x): x is { product: Product; quantity: number } => !!x),
+        .filter((x): x is { line: CartLine; product: Product } => !!x),
     [cart, products]
   );
 
-  const total = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  function unitPrice(product: Product, line: CartLine) {
+    return product.price + (line.customized ? product.customization_price : 0);
+  }
+
+  const total = cartItems.reduce((sum, { product, line }) => sum + unitPrice(product, line) * line.quantity, 0);
+  const cartCount = cartItems.reduce((sum, { line }) => sum + line.quantity, 0);
 
   return (
     <main className="min-h-screen bg-paper">
@@ -68,18 +99,44 @@ export function Storefront({
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div id="produtos" />
 
+        {categories.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className={`rounded-full px-3.5 py-1.5 text-sm border transition-colors ${
+                selectedCategory === null
+                  ? "bg-amber text-on-accent border-amber"
+                  : "border-line text-ink-muted hover:text-ink"
+              }`}
+            >
+              Todos
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`rounded-full px-3.5 py-1.5 text-sm border transition-colors ${
+                  selectedCategory === cat
+                    ? "bg-amber text-on-accent border-amber"
+                    : "border-line text-ink-muted hover:text-ink"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+
         {products.length === 0 ? (
           <p className="text-sm text-ink-muted">Essa loja ainda não tem produtos disponíveis.</p>
+        ) : visibleProducts.length === 0 ? (
+          <p className="text-sm text-ink-muted">Nenhum produto nessa categoria.</p>
         ) : (
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 mb-24">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                quantity={cart[product.id] || 0}
-                onAdd={() => addToCart(product.id)}
-                onChangeQty={(q) => changeQty(product.id, q)}
-              />
+            {visibleProducts.map((product) => (
+              <ProductCard key={product.id} product={product} onAdd={addToCart} />
             ))}
           </div>
         )}
@@ -107,6 +164,8 @@ export function Storefront({
             accountId={accountId}
             items={cartItems}
             total={total}
+            unitPrice={unitPrice}
+            onChangeQty={changeQty}
             onClose={() => setShowCheckout(false)}
           />
         )}
@@ -115,7 +174,7 @@ export function Storefront({
       <StoreAssistantWidget
         products={products.map((p) => ({ id: p.id, name: p.name, price: p.price }))}
         customerEmail={customerEmail}
-        onAddToCart={addToCart}
+        onAddToCart={(productId) => addToCart(productId)}
       />
     </main>
   );
@@ -123,16 +182,16 @@ export function Storefront({
 
 function ProductCard({
   product,
-  quantity,
   onAdd,
-  onChangeQty,
 }: {
   product: Product;
-  quantity: number;
-  onAdd: () => void;
-  onChangeQty: (q: number) => void;
+  onAdd: (productId: string, color: string | null, customized: boolean) => void;
 }) {
   const outOfStock = product.stock != null && product.stock <= 0;
+  const hasColors = product.available_colors.length > 0;
+
+  const [color, setColor] = useState<string | null>(hasColors ? product.available_colors[0] : null);
+  const [customized, setCustomized] = useState(false);
 
   return (
     <div className="border border-line bg-surface rounded-2xl overflow-hidden flex flex-col">
@@ -145,32 +204,49 @@ function ProductCard({
         )}
       </div>
       <div className="p-4 flex-1 flex flex-col">
+        {product.category && <p className="text-xs text-amber mb-0.5">{product.category}</p>}
         <p className="font-medium text-ink">{product.name}</p>
-        {product.description && (
-          <p className="text-xs text-ink-muted mt-1 line-clamp-2">{product.description}</p>
+        {product.description && <p className="text-xs text-ink-muted mt-1 line-clamp-2">{product.description}</p>}
+        <p className="font-spec text-amber font-medium mt-2">
+          {money(product.price + (customized ? product.customization_price : 0))}
+        </p>
+
+        {hasColors && (
+          <label className="block mt-3">
+            <span className="block text-xs text-ink-muted mb-1">Cor</span>
+            <select value={color || ""} onChange={(e) => setColor(e.target.value)} className="input text-sm py-1.5">
+              {product.available_colors.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
-        <p className="font-spec text-amber font-medium mt-2">{money(product.price)}</p>
+
+        {product.customizable && (
+          <label className="flex items-center gap-2 mt-3 text-xs text-ink-muted">
+            <input
+              type="checkbox"
+              checked={customized}
+              onChange={(e) => setCustomized(e.target.checked)}
+              className="accent-amber"
+            />
+            Personalizar (+ {money(product.customization_price)})
+          </label>
+        )}
+
         <div className="mt-auto pt-3">
           {outOfStock ? (
             <p className="text-xs text-danger">Esgotado</p>
-          ) : quantity === 0 ? (
+          ) : (
             <button
               type="button"
-              onClick={onAdd}
+              onClick={() => onAdd(product.id, color, customized)}
               className="w-full bg-amber text-on-accent text-sm font-medium rounded-full py-2"
             >
               Adicionar
             </button>
-          ) : (
-            <div className="flex items-center justify-between border border-line rounded-full px-3 py-1.5">
-              <button type="button" onClick={() => onChangeQty(quantity - 1)} className="text-ink px-2">
-                −
-              </button>
-              <span className="text-sm font-spec text-ink">{quantity}</span>
-              <button type="button" onClick={() => onChangeQty(quantity + 1)} className="text-ink px-2">
-                +
-              </button>
-            </div>
           )}
         </div>
       </div>
@@ -182,15 +258,26 @@ function CheckoutModal({
   accountId,
   items,
   total,
+  unitPrice,
+  onChangeQty,
   onClose,
 }: {
   accountId: string;
-  items: { product: Product; quantity: number }[];
+  items: { line: CartLine; product: Product }[];
   total: number;
+  unitPrice: (product: Product, line: CartLine) => number;
+  onChangeQty: (key: string, qty: number) => void;
   onClose: () => void;
 }) {
   const [state, formAction, pending] = useActionState(checkoutStoreCart, undefined);
-  const cartJson = JSON.stringify(items.map((i) => ({ productId: i.product.id, quantity: i.quantity })));
+  const cartJson = JSON.stringify(
+    items.map(({ line }) => ({
+      productId: line.productId,
+      quantity: line.quantity,
+      color: line.color,
+      customized: line.customized,
+    }))
+  );
 
   const [cep, setCep] = useState("");
   const [quotes, setQuotes] = useState<{ id: number; name: string; company: string; price: number; deliveryTime?: number }[] | null>(null);
@@ -219,7 +306,7 @@ function CheckoutModal({
         body: JSON.stringify({
           accountId,
           cep: digits,
-          items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+          items: items.map(({ line }) => ({ productId: line.productId, quantity: line.quantity })),
         }),
       });
       const result = await response.json();
@@ -245,13 +332,33 @@ function CheckoutModal({
           </button>
         </div>
 
-        <div className="space-y-1.5 text-sm mb-4 pb-4 border-b border-line">
-          {items.map(({ product, quantity }) => (
-            <div key={product.id} className="flex justify-between text-ink">
-              <span>{quantity}x {product.name}</span>
-              <span className="font-spec">{money(product.price * quantity)}</span>
-            </div>
-          ))}
+        <div className="space-y-2 text-sm mb-4 pb-4 border-b border-line">
+          {items.map(({ line, product }) => {
+            const details = [line.color ? `Cor: ${line.color}` : null, line.customized ? "Personalizado" : null]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <div key={line.key} className="flex justify-between gap-3 text-ink">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate">
+                      {line.quantity}x {product.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onChangeQty(line.key, 0)}
+                      aria-label="Remover item"
+                      className="text-ink-muted hover:text-danger text-xs shrink-0"
+                    >
+                      remover
+                    </button>
+                  </div>
+                  {details && <p className="text-xs text-ink-muted">{details}</p>}
+                </div>
+                <span className="font-spec shrink-0">{money(unitPrice(product, line) * line.quantity)}</span>
+              </div>
+            );
+          })}
           <div className="flex justify-between text-ink pt-1.5">
             <span>Subtotal</span>
             <span className="font-spec">{money(total)}</span>

@@ -23,8 +23,11 @@ type Product = {
   available_colors: string[];
   customizable: boolean;
   customization_price: number;
+  category: string | null;
   filament_rows?: { filament_stock_id: string; grams: number }[];
 };
+
+const PRESET_CATEGORIES = ["Decorações", "Automotivo", "Presentes", "Para empresas", "Para eventos"];
 
 type Printer = { id: string; name: string };
 type FilamentOption = { id: string; label: string };
@@ -135,6 +138,42 @@ function DeleteButton({ productId }: { productId: string }) {
   );
 }
 
+const CUSTOM_CATEGORY = "__custom__";
+
+function CategoryPicker({ initialValue }: { initialValue: string }) {
+  const isPreset = PRESET_CATEGORIES.includes(initialValue);
+  const [selected, setSelected] = useState(initialValue && !isPreset ? CUSTOM_CATEGORY : initialValue);
+  const [customValue, setCustomValue] = useState(initialValue && !isPreset ? initialValue : "");
+
+  const isCustom = selected === CUSTOM_CATEGORY;
+
+  return (
+    <div className="block">
+      <span className="block text-sm text-ink-muted mb-1">Categoria (opcional)</span>
+      <select value={selected} onChange={(e) => setSelected(e.target.value)} className="input">
+        <option value="">Sem categoria</option>
+        {PRESET_CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+        <option value={CUSTOM_CATEGORY}>Outra categoria (digitar)…</option>
+      </select>
+      {isCustom && (
+        <input
+          value={customValue}
+          onChange={(e) => setCustomValue(e.target.value)}
+          placeholder="Nome da nova categoria"
+          className="input mt-2"
+        />
+      )}
+      {/* O que vai pro servidor é sempre esse campo escondido — assim o
+          formulário não precisa saber se veio do select ou do texto. */}
+      <input type="hidden" name="category" value={isCustom ? customValue : selected} />
+    </div>
+  );
+}
+
 function ProductForm({
   product,
   printers,
@@ -187,6 +226,7 @@ function ProductForm({
         <span className="block text-sm text-ink-muted mb-1">Descrição (opcional)</span>
         <textarea name="description" defaultValue={product?.description ?? ""} rows={2} className="input" />
       </label>
+      <CategoryPicker initialValue={product?.category ?? ""} />
       <div className="grid sm:grid-cols-2 gap-4">
         <label className="block">
           <span className="block text-sm text-ink-muted mb-1">Preço (R$)</span>

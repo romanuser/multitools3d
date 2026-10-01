@@ -142,6 +142,7 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     .filter(Boolean);
   const customizable = formData.get("customizable") === "on";
   const customizationPrice = customizable ? Number(formData.get("customizationPrice") || 0) : 0;
+  const category = String(formData.get("category") || "").trim() || null;
 
   if (!name) return { error: "Dá um nome pro produto." };
   if (price <= 0) return { error: "Informe um preço válido." };
@@ -184,6 +185,7 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     available_colors: string[];
     customizable: boolean;
     customization_price: number;
+    category: string | null;
   } = {
     account_id: user.id,
     name,
@@ -202,6 +204,7 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     available_colors: availableColors,
     customizable,
     customization_price: customizationPrice,
+    category,
   };
 
   if (!productId) payload.slug = slug;
