@@ -25,7 +25,7 @@ export default async function LojaPage() {
   const { data: products } = await supabase
     .from("products")
     .select(
-      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min, shipping_weight, shipping_width, shipping_height, shipping_length, available_colors, customizable, customization_price"
+      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min, shipping_weight, shipping_width, shipping_height, shipping_length, available_colors, customizable, customization_price, category"
     )
     .eq("account_id", user.id)
     .order("created_at", { ascending: true });
