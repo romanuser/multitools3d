@@ -38,7 +38,12 @@ export default function ContaEntrarPage() {
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="input" />
           </label>
           <label className="block">
-            <span className="block text-xs font-medium text-ink-muted mb-1">Senha</span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="block text-xs font-medium text-ink-muted">Senha</span>
+              <Link href="/loja/conta/esqueci-senha" className="text-xs text-amber hover:underline">
+                Esqueci minha senha
+              </Link>
+            </div>
             <input
               type="password"
               value={password}

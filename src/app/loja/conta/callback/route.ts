@@ -11,12 +11,16 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  // "next" deixa esse mesmo callback servir tanto a confirmação de e-mail
+  // (vai pra /loja/conta) quanto a recuperação de senha (vai pra
+  // /loja/conta/redefinir-senha) — sem precisar de dois callbacks iguais.
+  const next = searchParams.get("next") || "/loja/conta";
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}/loja/conta`);
+      return NextResponse.redirect(`${origin}${next}`);
     }
   }
 
