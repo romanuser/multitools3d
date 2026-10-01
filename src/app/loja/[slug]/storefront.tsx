@@ -50,6 +50,8 @@ export function Storefront({
   const [cart, setCart] = useState<Record<string, CartLine>>({});
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [openProductId, setOpenProductId] = useState<string | null>(null);
+  const openProduct = products.find((p) => p.id === openProductId) ?? null;
 
   const categories = useMemo(
     () => Array.from(new Set(products.map((p) => p.category).filter((c): c is string => !!c))).sort(),
@@ -136,7 +138,12 @@ export function Storefront({
         ) : (
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5 mb-24">
             {visibleProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onAdd={addToCart} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAdd={addToCart}
+                onOpenDetail={() => setOpenProductId(product.id)}
+              />
             ))}
           </div>
         )}
@@ -157,6 +164,14 @@ export function Storefront({
               </button>
             </div>
           </div>
+        )}
+
+        {openProduct && (
+          <ProductDetailModal
+            product={openProduct}
+            onAdd={addToCart}
+            onClose={() => setOpenProductId(null)}
+          />
         )}
 
         {showCheckout && (
@@ -183,9 +198,11 @@ export function Storefront({
 function ProductCard({
   product,
   onAdd,
+  onOpenDetail,
 }: {
   product: Product;
   onAdd: (productId: string, color: string | null, customized: boolean) => void;
+  onOpenDetail: () => void;
 }) {
   const outOfStock = product.stock != null && product.stock <= 0;
   const hasColors = product.available_colors.length > 0;
@@ -195,17 +212,24 @@ function ProductCard({
 
   return (
     <div className="border border-line bg-surface rounded-2xl overflow-hidden flex flex-col">
-      <div className="aspect-square bg-paper flex items-center justify-center">
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        aria-label={`Ver detalhes de ${product.name}`}
+        className="aspect-square bg-paper flex items-center justify-center text-left w-full"
+      >
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
         ) : (
           <span className="text-ink-muted text-xs">sem foto</span>
         )}
-      </div>
+      </button>
       <div className="p-4 flex-1 flex flex-col">
         {product.category && <p className="text-xs text-amber mb-0.5">{product.category}</p>}
-        <p className="font-medium text-ink">{product.name}</p>
+        <button type="button" onClick={onOpenDetail} className="text-left font-medium text-ink hover:underline underline-offset-2">
+          {product.name}
+        </button>
         {product.description && <p className="text-xs text-ink-muted mt-1 line-clamp-2">{product.description}</p>}
         <p className="font-spec text-amber font-medium mt-2">
           {money(product.price + (customized ? product.customization_price : 0))}
@@ -248,6 +272,108 @@ function ProductCard({
               Adicionar
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductDetailModal({
+  product,
+  onAdd,
+  onClose,
+}: {
+  product: Product;
+  onAdd: (productId: string, color: string | null, customized: boolean) => void;
+  onClose: () => void;
+}) {
+  const outOfStock = product.stock != null && product.stock <= 0;
+  const hasColors = product.available_colors.length > 0;
+
+  const [color, setColor] = useState<string | null>(hasColors ? product.available_colors[0] : null);
+  const [customized, setCustomized] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  function handleAdd() {
+    onAdd(product.id, color, customized);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div
+        className="bg-surface border border-line rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors"
+          >
+            ← Voltar ao catálogo
+          </button>
+          <button type="button" onClick={onClose} aria-label="Fechar" className="text-ink-muted hover:text-ink text-xl leading-none">
+            ×
+          </button>
+        </div>
+
+        <div className="aspect-square bg-paper flex items-center justify-center">
+          {product.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-ink-muted text-sm">sem foto</span>
+          )}
+        </div>
+
+        <div className="p-5">
+          {product.category && <p className="text-xs text-amber mb-1">{product.category}</p>}
+          <p className="font-display text-xl font-semibold tracking-tight text-ink">{product.name}</p>
+          {product.description && <p className="text-sm text-ink-muted mt-2 leading-relaxed">{product.description}</p>}
+          <p className="font-spec text-amber font-medium text-lg mt-3">
+            {money(product.price + (customized ? product.customization_price : 0))}
+          </p>
+
+          {hasColors && (
+            <label className="block mt-4">
+              <span className="block text-sm text-ink-muted mb-1">Cor</span>
+              <select value={color || ""} onChange={(e) => setColor(e.target.value)} className="input">
+                {product.available_colors.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {product.customizable && (
+            <label className="flex items-center gap-2 mt-4 text-sm text-ink-muted">
+              <input
+                type="checkbox"
+                checked={customized}
+                onChange={(e) => setCustomized(e.target.checked)}
+                className="accent-amber"
+              />
+              Personalizar (+ {money(product.customization_price)})
+            </label>
+          )}
+
+          <div className="mt-6">
+            {outOfStock ? (
+              <p className="text-sm text-danger">Esgotado</p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAdd}
+                className="w-full bg-amber text-on-accent font-medium rounded-full py-3 text-sm"
+              >
+                {added ? "Adicionado!" : "Adicionar ao carrinho"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -340,20 +466,36 @@ function CheckoutModal({
             return (
               <div key={line.key} className="flex justify-between gap-3 text-ink">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate">
-                      {line.quantity}x {product.name}
-                    </span>
+                  <p className="truncate">{product.name}</p>
+                  {details && <p className="text-xs text-ink-muted">{details}</p>}
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onChangeQty(line.key, line.quantity - 1)}
+                      aria-label="Diminuir quantidade"
+                      className="w-6 h-6 flex items-center justify-center rounded-full border border-line text-ink hover:border-amber/50 transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="font-spec text-sm w-5 text-center">{line.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => onChangeQty(line.key, line.quantity + 1)}
+                      disabled={product.stock != null && line.quantity >= product.stock}
+                      aria-label="Aumentar quantidade"
+                      className="w-6 h-6 flex items-center justify-center rounded-full border border-line text-ink hover:border-amber/50 transition-colors disabled:opacity-30 disabled:hover:border-line"
+                    >
+                      +
+                    </button>
                     <button
                       type="button"
                       onClick={() => onChangeQty(line.key, 0)}
                       aria-label="Remover item"
-                      className="text-ink-muted hover:text-danger text-xs shrink-0"
+                      className="text-ink-muted hover:text-danger text-xs ml-1"
                     >
                       remover
                     </button>
                   </div>
-                  {details && <p className="text-xs text-ink-muted">{details}</p>}
                 </div>
                 <span className="font-spec shrink-0">{money(unitPrice(product, line) * line.quantity)}</span>
               </div>
