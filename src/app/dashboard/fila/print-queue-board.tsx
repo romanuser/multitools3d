@@ -2,14 +2,17 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createJob, startJob, completeJob, failJob, recalcFailure, deleteJob } from "@/lib/print-jobs/actions";
+import { FilamentRowsPicker } from "@/components/filament-rows-picker";
+
+type JobFilamentRow = { filament_stock_id: string; planned_grams: number; actual_grams: number | null };
 
 type Job = {
   id: string;
   sequence_number: number;
   name: string;
   printer_id: string;
-  filament_stock_id: string;
-  planned_grams: number;
+  filament_stock_id: string | null;
+  planned_grams: number | null;
   actual_grams: number | null;
   waste_grams: number | null;
   status: string;
@@ -18,6 +21,7 @@ type Job = {
   sell_price: number | null;
   cost_snapshot: number | null;
   profit: number | null;
+  filaments: JobFilamentRow[];
 };
 
 type Printer = { id: string; name: string };
@@ -36,7 +40,7 @@ export function PrintQueueBoard({
 }) {
   const [showForm, setShowForm] = useState(false);
   const printerName = (id: string) => printers.find((p) => p.id === id)?.name ?? "—";
-  const filamentLabel = (id: string) => filaments.find((f) => f.id === id)?.label ?? "—";
+  const filamentLabel = (id: string | null) => filaments.find((f) => f.id === id)?.label ?? "—";
 
   const fila = jobs.filter((j) => j.status === "fila");
   const imprimindo = jobs.filter((j) => j.status === "imprimindo");
@@ -62,17 +66,17 @@ export function PrintQueueBoard({
       <div className="grid md:grid-cols-3 gap-6">
         <Column title="Fila" count={fila.length}>
           {fila.map((job) => (
-            <JobCard key={job.id} job={job} printerName={printerName(job.printer_id)} filamentLabel={filamentLabel(job.filament_stock_id)} />
+            <JobCard key={job.id} job={job} printerName={printerName(job.printer_id)} filamentLabel={filamentLabel(job.filament_stock_id)} filaments={filaments} />
           ))}
         </Column>
         <Column title="Imprimindo" count={imprimindo.length}>
           {imprimindo.map((job) => (
-            <JobCard key={job.id} job={job} printerName={printerName(job.printer_id)} filamentLabel={filamentLabel(job.filament_stock_id)} />
+            <JobCard key={job.id} job={job} printerName={printerName(job.printer_id)} filamentLabel={filamentLabel(job.filament_stock_id)} filaments={filaments} />
           ))}
         </Column>
         <Column title="Finalizadas" count={finalizadas.length}>
           {finalizadas.map((job) => (
-            <JobCard key={job.id} job={job} printerName={printerName(job.printer_id)} filamentLabel={filamentLabel(job.filament_stock_id)} />
+            <JobCard key={job.id} job={job} printerName={printerName(job.printer_id)} filamentLabel={filamentLabel(job.filament_stock_id)} filaments={filaments} />
           ))}
         </Column>
       </div>
@@ -94,14 +98,36 @@ function Column({ title, count, children }: { title: string; count: number; chil
   );
 }
 
-function JobCard({ job, printerName, filamentLabel }: { job: Job; printerName: string; filamentLabel: string }) {
+function JobCard({
+  job,
+  printerName,
+  filamentLabel,
+  filaments,
+}: {
+  job: Job;
+  printerName: string;
+  filamentLabel: string;
+  filaments: FilamentOption[];
+}) {
+  const isMulti = job.filaments.length > 0;
+  const totalPlanned = isMulti
+    ? job.filaments.reduce((sum, f) => sum + Number(f.planned_grams), 0)
+    : job.planned_grams ?? 0;
+
   const [pending, setPending] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [showRecalc, setShowRecalc] = useState(false);
-  const [actualGrams, setActualGrams] = useState(job.planned_grams);
+  const [actualGrams, setActualGrams] = useState(job.planned_grams ?? 0);
+  const [multiActuals, setMultiActuals] = useState<Record<string, number>>(() =>
+    Object.fromEntries(job.filaments.map((f) => [f.filament_stock_id, f.planned_grams]))
+  );
   const [wasteGrams, setWasteGrams] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const autoCompletedRef = useRef(false);
+
+  function labelFor(id: string) {
+    return filaments.find((f) => f.id === id)?.label ?? "—";
+  }
 
   const hasTimer = job.status === "imprimindo" && !!job.estimated_time_min && !!job.started_at;
 
@@ -125,7 +151,16 @@ function JobCard({ job, printerName, filamentLabel }: { job: Job; printerName: s
   useEffect(() => {
     if (hasTimer && percent >= 100 && !autoCompletedRef.current) {
       autoCompletedRef.current = true;
-      run(() => completeJob(job.id, job.planned_grams));
+      if (isMulti) {
+        run(() =>
+          completeJob(
+            job.id,
+            job.filaments.map((f) => ({ filamentStockId: f.filament_stock_id, actualGrams: Number(f.planned_grams) }))
+          )
+        );
+      } else {
+        run(() => completeJob(job.id, job.planned_grams ?? 0));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTimer, percent]);
@@ -148,9 +183,20 @@ function JobCard({ job, printerName, filamentLabel }: { job: Job; printerName: s
           </button>
         )}
       </div>
-      <p className="text-xs text-ink-muted mt-1">{printerName} · {filamentLabel}</p>
+      <p className="text-xs text-ink-muted mt-1">
+        {printerName} · {isMulti ? `${job.filaments.length} filamentos` : filamentLabel}
+      </p>
+      {isMulti && (
+        <ul className="text-xs text-ink-muted font-spec mt-1 space-y-0.5">
+          {job.filaments.map((f) => (
+            <li key={f.filament_stock_id}>
+              {labelFor(f.filament_stock_id)} · {f.planned_grams}g
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="text-xs text-ink-muted font-spec mt-1">
-        {job.planned_grams}g planejados{job.estimated_time_min ? ` · ${job.estimated_time_min} min` : ""}
+        {totalPlanned}g planejados{job.estimated_time_min ? ` · ${job.estimated_time_min} min` : ""}
       </p>
 
       {hasTimer && (
@@ -169,7 +215,13 @@ function JobCard({ job, printerName, filamentLabel }: { job: Job; printerName: s
 
       {job.status === "concluida" && (
         <div className="mt-3 pt-3 border-t border-line text-xs space-y-1">
-          <Row label="Usado" value={`${job.actual_grams ?? job.planned_grams}g`} />
+          {isMulti ? (
+            job.filaments.map((f) => (
+              <Row key={f.filament_stock_id} label={labelFor(f.filament_stock_id)} value={`${f.actual_grams ?? f.planned_grams}g`} />
+            ))
+          ) : (
+            <Row label="Usado" value={`${job.actual_grams ?? job.planned_grams}g`} />
+          )}
           {job.cost_snapshot != null && <Row label="Custo" value={money(job.cost_snapshot)} />}
           {job.profit != null && <Row label="Lucro" value={money(job.profit)} good />}
         </div>
@@ -206,18 +258,50 @@ function JobCard({ job, printerName, filamentLabel }: { job: Job; printerName: s
 
       {showComplete && (
         <div className="mt-3 pt-3 border-t border-line space-y-2">
-          <label className="block">
-            <span className="block text-xs text-ink-muted mb-1">Gramas realmente usadas</span>
-            <input
-              type="number"
-              min="0"
-              value={actualGrams}
-              onChange={(e) => setActualGrams(Number(e.target.value))}
-              className="input font-spec"
-            />
-          </label>
+          {isMulti ? (
+            job.filaments.map((f) => (
+              <label key={f.filament_stock_id} className="block">
+                <span className="block text-xs text-ink-muted mb-1">{labelFor(f.filament_stock_id)} — gramas usadas</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={multiActuals[f.filament_stock_id] ?? f.planned_grams}
+                  onChange={(e) =>
+                    setMultiActuals((prev) => ({ ...prev, [f.filament_stock_id]: Number(e.target.value) }))
+                  }
+                  className="input font-spec"
+                />
+              </label>
+            ))
+          ) : (
+            <label className="block">
+              <span className="block text-xs text-ink-muted mb-1">Gramas realmente usadas</span>
+              <input
+                type="number"
+                min="0"
+                value={actualGrams}
+                onChange={(e) => setActualGrams(Number(e.target.value))}
+                className="input font-spec"
+              />
+            </label>
+          )}
           <div className="flex gap-2">
-            <ActionButton onClick={() => run(() => completeJob(job.id, actualGrams))} pending={pending}>
+            <ActionButton
+              onClick={() =>
+                run(() =>
+                  isMulti
+                    ? completeJob(
+                        job.id,
+                        job.filaments.map((f) => ({
+                          filamentStockId: f.filament_stock_id,
+                          actualGrams: multiActuals[f.filament_stock_id] ?? f.planned_grams,
+                        }))
+                      )
+                    : completeJob(job.id, actualGrams)
+                )
+              }
+              pending={pending}
+            >
               Confirmar
             </ActionButton>
             <button type="button" onClick={() => setShowComplete(false)} className="text-xs text-ink-muted hover:text-ink">
@@ -321,21 +405,10 @@ function NewJobForm({
             ))}
           </select>
         </label>
-        <label className="block">
-          <span className="block text-sm text-ink-muted mb-1">Filamento</span>
-          <select name="filamentStockId" required className="input">
-            <option value="">Selecione…</option>
-            {filaments.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="block text-sm text-ink-muted mb-1">Gramagem planejada</span>
-          <input type="number" name="plannedGrams" min="1" required className="input font-spec" />
-        </label>
+        <div className="sm:col-span-2">
+          <span className="block text-sm text-ink-muted mb-1">Filamento(s)</span>
+          <FilamentRowsPicker name="filamentsJson" filaments={filaments} gramsLabel="Gramas" />
+        </div>
         <label className="block">
           <span className="block text-sm text-ink-muted mb-1">Tempo estimado (min, opcional)</span>
           <input type="number" name="estimatedTimeMin" min="0" className="input font-spec" />

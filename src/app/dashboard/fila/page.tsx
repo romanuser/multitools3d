@@ -22,6 +22,29 @@ export default async function FilaPage() {
     supabase.from("filament_stock").select("id, material, color").eq("account_id", user.id),
   ]);
 
+  // Impressões com mais de um filamento — as linhas extras moram numa
+  // tabela à parte (jobs com só 1 filamento usam direto as colunas de
+  // print_jobs e nem aparecem aqui).
+  const jobIds = (jobs ?? []).map((j) => j.id);
+  const { data: jobFilaments } = jobIds.length
+    ? await supabase
+        .from("print_job_filaments")
+        .select("job_id, filament_stock_id, planned_grams, actual_grams")
+        .in("job_id", jobIds)
+    : { data: [] };
+
+  const filamentsByJob = new Map<string, { filament_stock_id: string; planned_grams: number; actual_grams: number | null }[]>();
+  for (const row of jobFilaments ?? []) {
+    const list = filamentsByJob.get(row.job_id) ?? [];
+    list.push(row);
+    filamentsByJob.set(row.job_id, list);
+  }
+
+  const jobsWithFilaments = (jobs ?? []).map((job) => ({
+    ...job,
+    filaments: filamentsByJob.get(job.id) ?? [],
+  }));
+
   return (
     <main className="min-h-screen px-6 py-12">
       <div className="max-w-6xl mx-auto">
@@ -44,7 +67,7 @@ export default async function FilaPage() {
         )}
 
         <PrintQueueBoard
-          jobs={jobs ?? []}
+          jobs={jobsWithFilaments}
           printers={printers ?? []}
           filaments={(filaments ?? []).map((f) => ({ id: f.id, label: `${f.material} · ${f.color}` }))}
         />

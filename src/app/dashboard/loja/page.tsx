@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getAccountPlanStatus, hasFullAccess } from "@/lib/plans/access";
 import { StoreSettingsForm } from "./store-settings-form";
 import { ShippingSettingsForm } from "./shipping-settings-form";
 import { ProductList } from "./product-list";
@@ -14,9 +13,7 @@ export default async function LojaPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { plan } = await getAccountPlanStatus(user.id);
-  if (!hasFullAccess(plan)) redirect("/dashboard/plano");
-
+  // A loja virtual é gratuita pra qualquer plano.
   const { data: account } = await supabase
     .from("accounts")
     .select(
@@ -28,10 +25,31 @@ export default async function LojaPage() {
   const { data: products } = await supabase
     .from("products")
     .select(
-      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min, shipping_weight, shipping_width, shipping_height, shipping_length"
+      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min, shipping_weight, shipping_width, shipping_height, shipping_length, available_colors, customizable, customization_price"
     )
     .eq("account_id", user.id)
     .order("created_at", { ascending: true });
+
+  // Produtos com mais de um filamento na receita — os com só 1 usam
+  // direto as colunas acima e nem aparecem aqui.
+  const productIds = (products ?? []).map((p) => p.id);
+  const { data: productFilamentRows } = productIds.length
+    ? await supabase
+        .from("product_filaments")
+        .select("product_id, filament_stock_id, grams")
+        .in("product_id", productIds)
+    : { data: [] };
+
+  const filamentRowsByProduct = new Map<string, { filament_stock_id: string; grams: number }[]>();
+  for (const row of productFilamentRows ?? []) {
+    const list = filamentRowsByProduct.get(row.product_id) ?? [];
+    list.push(row);
+    filamentRowsByProduct.set(row.product_id, list);
+  }
+  const productsWithFilaments = (products ?? []).map((p) => ({
+    ...p,
+    filament_rows: filamentRowsByProduct.get(p.id) ?? [],
+  }));
 
   const [{ data: printers }, { data: filaments }] = await Promise.all([
     supabase.from("printers").select("id, name").eq("account_id", user.id),
@@ -69,7 +87,12 @@ export default async function LojaPage() {
         <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
           ← Painel
         </Link>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Loja virtual</h1>
+        <div className="flex items-center justify-between mt-4 mb-1">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Loja virtual</h1>
+          <Link href="/dashboard/loja/comprovantes" className="text-sm text-amber hover:underline">
+            Comprovantes →
+          </Link>
+        </div>
         <p className="text-sm text-ink-muted mb-8">
           Cadastre seus produtos e compartilhe o link da sua loja com os clientes. As vendas caem
           direto na sua conta InfinitePay.
@@ -113,7 +136,7 @@ export default async function LojaPage() {
             <span className="text-xs text-ink-muted">{products?.length ?? 0} de 300</span>
           </div>
           <ProductList
-            products={products ?? []}
+            products={productsWithFilaments}
             printers={printers ?? []}
             filaments={(filaments ?? []).map((f) => ({ id: f.id, label: `${f.material} · ${f.color}` }))}
           />

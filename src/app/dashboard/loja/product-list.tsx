@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { saveProduct, deleteProduct } from "@/lib/store/actions";
+import { FilamentRowsPicker } from "@/components/filament-rows-picker";
 
 type Product = {
   id: string;
@@ -19,6 +20,10 @@ type Product = {
   shipping_width: number | null;
   shipping_height: number | null;
   shipping_length: number | null;
+  available_colors: string[];
+  customizable: boolean;
+  customization_price: number;
+  filament_rows?: { filament_stock_id: string; grams: number }[];
 };
 
 type Printer = { id: string; name: string };
@@ -143,6 +148,7 @@ function ProductForm({
 }) {
   const [state, formAction, pending] = useActionState(saveProduct, undefined);
   const [preview, setPreview] = useState<string | null>(product?.image_url ?? null);
+  const [customizable, setCustomizable] = useState(product?.customizable ?? false);
 
   if (state !== undefined && !state.error && !pending) {
     queueMicrotask(onDone);
@@ -197,6 +203,46 @@ function ProductForm({
       </label>
 
       <div className="border-t border-line pt-4">
+        <p className="text-sm font-medium text-ink mb-1">Cores e personalização (opcional)</p>
+        <label className="block mb-3">
+          <span className="block text-sm text-ink-muted mb-1">Cores disponíveis (separadas por vírgula)</span>
+          <input
+            name="availableColors"
+            defaultValue={product?.available_colors?.join(", ") ?? ""}
+            className="input"
+            placeholder="Branco, Preto, Verde"
+          />
+          <span className="block text-xs text-ink-muted mt-1">
+            Deixe em branco se o produto não tiver opção de cor. Se preencher, o cliente escolhe uma na loja.
+          </span>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-ink mb-2">
+          <input
+            type="checkbox"
+            name="customizable"
+            checked={customizable}
+            onChange={(e) => setCustomizable(e.target.checked)}
+            className="accent-amber"
+          />
+          Permite personalização (ex: nome gravado, cor customizada)
+        </label>
+        {customizable && (
+          <label className="block max-w-xs">
+            <span className="block text-sm text-ink-muted mb-1">Valor extra da personalização (R$)</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              name="customizationPrice"
+              defaultValue={product?.customization_price || ""}
+              className="input font-spec"
+              placeholder="0,00"
+            />
+          </label>
+        )}
+      </div>
+
+      <div className="border-t border-line pt-4">
         <p className="text-sm font-medium text-ink mb-1">Receita de impressão (opcional)</p>
         <p className="text-xs text-ink-muted mb-3">
           Se preencher isso, toda vez que um pedido desse produto for pago, a impressão entra
@@ -214,27 +260,21 @@ function ProductForm({
               ))}
             </select>
           </label>
-          <label className="block">
-            <span className="block text-sm text-ink-muted mb-1">Filamento</span>
-            <select name="printFilamentId" defaultValue={product?.print_filament_id ?? ""} className="input">
-              <option value="">Selecione…</option>
-              {filaments.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="block text-sm text-ink-muted mb-1">Gramagem por unidade</span>
-            <input
-              type="number"
-              name="printWeightG"
-              min="1"
-              defaultValue={product?.print_weight_g ?? ""}
-              className="input font-spec"
+          <div className="sm:col-span-2">
+            <span className="block text-sm text-ink-muted mb-1">Filamento(s) por unidade</span>
+            <FilamentRowsPicker
+              name="filamentsJson"
+              filaments={filaments}
+              gramsLabel="Gramas"
+              initialRows={
+                product?.filament_rows?.length
+                  ? product.filament_rows.map((r) => ({ filamentStockId: r.filament_stock_id, grams: String(r.grams) }))
+                  : product?.print_filament_id
+                    ? [{ filamentStockId: product.print_filament_id, grams: String(product.print_weight_g ?? "") }]
+                    : undefined
+              }
             />
-          </label>
+          </div>
           <label className="block">
             <span className="block text-sm text-ink-muted mb-1">Tempo estimado (min, opcional)</span>
             <input
@@ -251,7 +291,7 @@ function ProductForm({
       <div className="border-t border-line pt-4">
         <p className="text-sm font-medium text-ink mb-1">Medidas de envio (opcional)</p>
         <p className="text-xs text-ink-muted mb-3">
-          Se não preencher, a loja usa o "pacote padrão" configurado nas opções de frete.
+          Se não preencher, a loja usa o &quot;pacote padrão&quot; configurado nas opções de frete.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <label className="block">

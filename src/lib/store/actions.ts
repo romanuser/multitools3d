@@ -114,13 +114,34 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
   const active = formData.get("active") === "on";
   const photoFile = formData.get("photo") as File | null;
   const printPrinterId = String(formData.get("printPrinterId") || "") || null;
-  const printFilamentId = String(formData.get("printFilamentId") || "") || null;
-  const printWeightG = formData.get("printWeightG") ? Number(formData.get("printWeightG")) : null;
   const printTimeMin = formData.get("printTimeMin") ? Number(formData.get("printTimeMin")) : null;
+
+  // Filamento(s) da receita de impressão. 1 filamento só: grava do jeito
+  // de sempre, nas colunas antigas. Mais de 1: colunas antigas ficam
+  // vazias, e as linhas vão pra tabela product_filaments.
+  type FilamentRowInput = { filamentStockId: string; grams: string };
+  let filamentRows: { filamentStockId: string; grams: number }[] = [];
+  try {
+    const raw = JSON.parse(String(formData.get("filamentsJson") || "[]")) as FilamentRowInput[];
+    filamentRows = raw
+      .map((r) => ({ filamentStockId: r.filamentStockId, grams: Number(r.grams) }))
+      .filter((r) => r.filamentStockId && r.grams > 0);
+  } catch {
+    filamentRows = [];
+  }
+  const isSingleFilament = filamentRows.length === 1;
+  const printFilamentId = isSingleFilament ? filamentRows[0].filamentStockId : null;
+  const printWeightG = isSingleFilament ? filamentRows[0].grams : null;
   const shippingWeight = formData.get("shippingWeight") ? Number(formData.get("shippingWeight")) : null;
   const shippingWidth = formData.get("shippingWidth") ? Number(formData.get("shippingWidth")) : null;
   const shippingHeight = formData.get("shippingHeight") ? Number(formData.get("shippingHeight")) : null;
   const shippingLength = formData.get("shippingLength") ? Number(formData.get("shippingLength")) : null;
+  const availableColors = String(formData.get("availableColors") || "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  const customizable = formData.get("customizable") === "on";
+  const customizationPrice = customizable ? Number(formData.get("customizationPrice") || 0) : 0;
 
   if (!name) return { error: "Dá um nome pro produto." };
   if (price <= 0) return { error: "Informe um preço válido." };
@@ -160,6 +181,9 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     shipping_width: number | null;
     shipping_height: number | null;
     shipping_length: number | null;
+    available_colors: string[];
+    customizable: boolean;
+    customization_price: number;
   } = {
     account_id: user.id,
     name,
@@ -175,6 +199,9 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     shipping_width: shippingWidth,
     shipping_height: shippingHeight,
     shipping_length: shippingLength,
+    available_colors: availableColors,
+    customizable,
+    customization_price: customizationPrice,
   };
 
   if (!productId) payload.slug = slug;
@@ -199,11 +226,24 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     payload.image_url = `${publicUrl}?v=${Date.now()}`;
   }
 
-  const { error } = productId
-    ? await supabase.from("products").update(payload).eq("id", productId)
-    : await supabase.from("products").insert(payload);
+  const { data: savedProduct, error } = productId
+    ? await supabase.from("products").update(payload).eq("id", productId).select("id").single()
+    : await supabase.from("products").insert(payload).select("id").single();
 
   if (error) return { error: error.message };
+
+  // Sincroniza a tabela de múltiplos filamentos: sempre limpa e recria —
+  // mais simples e seguro que tentar "atualizar linha por linha".
+  await supabase.from("product_filaments").delete().eq("product_id", savedProduct.id);
+  if (filamentRows.length > 1) {
+    await supabase.from("product_filaments").insert(
+      filamentRows.map((r) => ({
+        product_id: savedProduct.id,
+        filament_stock_id: r.filamentStockId,
+        grams: r.grams,
+      }))
+    );
+  }
 
   revalidatePath("/dashboard/loja");
   return {};

@@ -6,6 +6,20 @@ import { revalidatePath } from "next/cache";
 
 export type JobState = { error?: string } | undefined;
 
+type FilamentRowInput = { filamentStockId: string; grams: string };
+
+function parseFilamentRows(json: string): { filamentStockId: string; grams: number }[] {
+  let rows: FilamentRowInput[] = [];
+  try {
+    rows = JSON.parse(json);
+  } catch {
+    return [];
+  }
+  return rows
+    .map((r) => ({ filamentStockId: r.filamentStockId, grams: Number(r.grams) }))
+    .filter((r) => r.filamentStockId && r.grams > 0);
+}
+
 export async function createJob(_prevState: JobState, formData: FormData): Promise<JobState> {
   const supabase = await createClient();
   const {
@@ -15,8 +29,7 @@ export async function createJob(_prevState: JobState, formData: FormData): Promi
 
   const name = String(formData.get("name") || "").trim();
   const printerId = String(formData.get("printerId") || "");
-  const filamentStockId = String(formData.get("filamentStockId") || "");
-  const plannedGrams = Number(formData.get("plannedGrams") || 0);
+  const filamentRows = parseFilamentRows(String(formData.get("filamentsJson") || "[]"));
   const estimatedTimeMin = formData.get("estimatedTimeMin")
     ? Number(formData.get("estimatedTimeMin"))
     : null;
@@ -24,21 +37,41 @@ export async function createJob(_prevState: JobState, formData: FormData): Promi
 
   if (!name) return { error: "Dá um nome pra impressão." };
   if (!printerId) return { error: "Escolha a impressora." };
-  if (!filamentStockId) return { error: "Escolha o filamento." };
-  if (plannedGrams <= 0) return { error: "Informe a gramagem planejada." };
+  if (!filamentRows.length) return { error: "Escolha pelo menos um filamento." };
 
-  const { error } = await supabase.from("print_jobs").insert({
-    account_id: user.id,
-    name,
-    printer_id: printerId,
-    filament_stock_id: filamentStockId,
-    planned_grams: plannedGrams,
-    estimated_time_min: estimatedTimeMin,
-    sell_price: sellPrice,
-    status: "fila",
-  });
+  // Caso comum (1 filamento só): grava do jeito de sempre, nas colunas
+  // antigas — nada muda aqui, é o mesmo caminho que já funcionava.
+  const isSingle = filamentRows.length === 1;
+
+  const { data: job, error } = await supabase
+    .from("print_jobs")
+    .insert({
+      account_id: user.id,
+      name,
+      printer_id: printerId,
+      filament_stock_id: isSingle ? filamentRows[0].filamentStockId : null,
+      planned_grams: isSingle ? filamentRows[0].grams : null,
+      estimated_time_min: estimatedTimeMin,
+      sell_price: sellPrice,
+      status: "fila",
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  // Caso com mais de um filamento: as linhas extras vão pra tabela nova —
+  // o desconto de estoque delas é feito no código, na hora de concluir.
+  if (!isSingle && job) {
+    const { error: rowsError } = await supabase.from("print_job_filaments").insert(
+      filamentRows.map((r) => ({
+        job_id: job.id,
+        filament_stock_id: r.filamentStockId,
+        planned_grams: r.grams,
+      }))
+    );
+    if (rowsError) return { error: rowsError.message };
+  }
 
   revalidatePath("/dashboard/fila");
   return {};
@@ -68,26 +101,71 @@ export async function startJob(jobId: string): Promise<{ error?: string }> {
 }
 
 // ---------------------------------------------------------------------
-// Concluir com sucesso. O banco (trigger) desconta o estoque com base em
-// actual_grams e calcula custo/lucro automaticamente.
+// Concluir com sucesso.
+//
+// Impressão com 1 filamento só (actualGrams é um número): nada muda — o
+// banco (trigger) continua descontando o estoque com base em actual_grams
+// e calculando custo/lucro automaticamente, do jeito que já funcionava.
+//
+// Impressão com VÁRIOS filamentos (actualGrams é uma lista): aqui quem
+// desconta o estoque de cada filamento e calcula custo/lucro é este
+// código — de propósito, pra não depender de mexer no gatilho do banco
+// (que a gente não tem como ver/editar com segurança).
 // ---------------------------------------------------------------------
-export async function completeJob(jobId: string, actualGrams: number): Promise<{ error?: string }> {
+export async function completeJob(
+  jobId: string,
+  actualGrams: number | { filamentStockId: string; actualGrams: number }[]
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: job } = await supabase
     .from("print_jobs")
-    .select("printer_id")
+    .select("printer_id, sell_price")
     .eq("id", jobId)
     .maybeSingle();
 
-  const { error } = await supabase
-    .from("print_jobs")
-    .update({
-      status: "concluida",
-      actual_grams: actualGrams,
-      finished_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
-  if (error) return { error: error.message };
+  if (Array.isArray(actualGrams)) {
+    const { error } = await supabase
+      .from("print_jobs")
+      .update({ status: "concluida", finished_at: new Date().toISOString() })
+      .eq("id", jobId);
+    if (error) return { error: error.message };
+
+    let totalCost = 0;
+    for (const row of actualGrams) {
+      const { data: filament } = await supabase
+        .from("filament_stock")
+        .select("current_grams, cost_per_kg")
+        .eq("id", row.filamentStockId)
+        .maybeSingle();
+      if (!filament) continue;
+
+      totalCost += (row.actualGrams / 1000) * Number(filament.cost_per_kg || 0);
+
+      await supabase
+        .from("filament_stock")
+        .update({ current_grams: Number(filament.current_grams) - row.actualGrams })
+        .eq("id", row.filamentStockId);
+
+      await supabase
+        .from("print_job_filaments")
+        .update({ actual_grams: row.actualGrams })
+        .eq("job_id", jobId)
+        .eq("filament_stock_id", row.filamentStockId);
+    }
+
+    const profit = job?.sell_price != null ? Number(job.sell_price) - totalCost : null;
+    await supabase.from("print_jobs").update({ cost_snapshot: totalCost, profit }).eq("id", jobId);
+  } else {
+    const { error } = await supabase
+      .from("print_jobs")
+      .update({
+        status: "concluida",
+        actual_grams: actualGrams,
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+    if (error) return { error: error.message };
+  }
 
   if (job?.printer_id) {
     await supabase.from("printers").update({ status: "livre" }).eq("id", job.printer_id);

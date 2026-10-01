@@ -27,24 +27,58 @@ export async function createPrintJobsForOrder(
 
   if (!products?.length) return;
 
+  // Produtos com mais de um filamento na receita — os com só 1 usam
+  // direto as colunas acima (print_filament_id/print_weight_g).
+  const { data: multiRows } = await client
+    .from("product_filaments")
+    .select("product_id, filament_stock_id, grams")
+    .in("product_id", productIds);
+
+  const multiByProduct = new Map<string, { filament_stock_id: string; grams: number }[]>();
+  for (const row of multiRows ?? []) {
+    const list = multiByProduct.get(row.product_id) ?? [];
+    list.push(row);
+    multiByProduct.set(row.product_id, list);
+  }
+
   for (const item of items) {
     const product = products.find((p) => p.id === item.productId);
     if (!product) continue;
-    if (!product.print_printer_id || !product.print_filament_id || !product.print_weight_g) {
-      continue; // produto sem receita de impressão configurada — pula
-    }
+
+    const multiFilaments = multiByProduct.get(product.id) ?? [];
+    const hasRecipe = multiFilaments.length
+      ? !!product.print_printer_id
+      : !!(product.print_printer_id && product.print_filament_id && product.print_weight_g);
+    if (!hasRecipe) continue; // produto sem receita de impressão configurada — pula
 
     const quantity = Math.max(1, item.quantity || 1);
-    const rows = Array.from({ length: quantity }, () => ({
-      account_id: accountId,
-      name: product.name,
-      printer_id: product.print_printer_id,
-      filament_stock_id: product.print_filament_id,
-      planned_grams: product.print_weight_g,
-      estimated_time_min: product.print_time_min || null,
-      status: "fila",
-    }));
 
-    await client.from("print_jobs").insert(rows);
+    for (let i = 0; i < quantity; i++) {
+      const { data: job, error } = await client
+        .from("print_jobs")
+        .insert({
+          account_id: accountId,
+          name: product.name,
+          printer_id: product.print_printer_id,
+          filament_stock_id: multiFilaments.length ? null : product.print_filament_id,
+          planned_grams: multiFilaments.length ? null : product.print_weight_g,
+          estimated_time_min: product.print_time_min || null,
+          status: "fila",
+        })
+        .select("id")
+        .single();
+
+      if (error || !job) continue;
+
+      if (multiFilaments.length) {
+        await client.from("print_job_filaments").insert(
+          multiFilaments.map((f) => ({
+            job_id: job.id,
+            filament_stock_id: f.filament_stock_id,
+            planned_grams: f.grams,
+          }))
+        );
+      }
+    }
   }
 }
