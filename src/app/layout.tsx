@@ -53,6 +53,20 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`h-full antialiased ${bricolage.variable} ${plexSans.variable} ${plexMono.variable}`}>
+      <head>
+        {/* Verificação de propriedade do site pro Google AdSense — as 3
+            formas que o Google aceita, deixadas prontas de uma vez. Fica
+            aqui no layout raiz pra valer em TODA página do site:
+            1) o snippet de código (script abaixo)
+            2) a metatag
+            3) o arquivo ads.txt (em public/ads.txt, servido na raiz do site) */}
+        <meta name="google-adsense-account" content="ca-pub-8764465578125903" />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8764465578125903"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-paper text-ink">
         {/* Aplica o tema salvo ANTES do primeiro paint, pra não piscar o
             tema errado por uma fração de segundo ao carregar a página. */}
