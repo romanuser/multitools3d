@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { OrderTimeline } from "@/components/order-timeline";
 import { OrderChat } from "@/components/order-chat";
+import { formatDeliveryEstimate } from "@/lib/store/delivery-estimate";
 
 const STATUS_LABELS: Record<string, string> = {
   AGUARDANDO_PAGAMENTO: "Aguardando pagamento",
@@ -30,7 +31,7 @@ export default async function ContaPage() {
   // precisar de nenhum privilégio especial.
   const { data: orders } = await supabase
     .from("store_orders")
-    .select("id, account_id, items, total, status, created_at")
+    .select("id, account_id, items, total, status, created_at, production_minutes, shipping_days, is_pickup")
     .order("created_at", { ascending: false });
 
   const accountIds = [...new Set((orders ?? []).map((o) => o.account_id))];
@@ -86,6 +87,19 @@ export default async function ContaPage() {
                     </p>
                   ))}
                 </div>
+
+                {(() => {
+                  const estimate = formatDeliveryEstimate(
+                    order.production_minutes || 0,
+                    order.shipping_days,
+                    !!order.is_pickup
+                  );
+                  return estimate ? (
+                    <p className="text-xs text-amber mb-4 flex items-center gap-1">
+                      <span>⏱</span> {estimate}
+                    </p>
+                  ) : null;
+                })()}
 
                 <div className="mb-4 overflow-x-auto">
                   <div className="min-w-[420px]">

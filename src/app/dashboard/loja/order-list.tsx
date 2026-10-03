@@ -5,6 +5,7 @@ import { updateOrderStatus, deleteOrder } from "@/lib/store/actions";
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/store/order-status";
 import { OrderTimeline } from "@/components/order-timeline";
 import { OrderChat } from "@/components/order-chat";
+import { formatDeliveryEstimate } from "@/lib/store/delivery-estimate";
 
 type OrderItem = { description: string; quantity: number; unit_price: number; total: number };
 type OrderMessage = { id: string; sender_role: "cliente" | "lojista"; sender_name: string; text: string; created_at: string };
@@ -18,6 +19,9 @@ type Order = {
   status: string;
   created_at: string;
   messages: OrderMessage[];
+  production_minutes: number | null;
+  shipping_days: number | null;
+  is_pickup: boolean | null;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -98,6 +102,15 @@ function OrderRow({ order }: { order: Order }) {
           </p>
         ))}
       </div>
+
+      {(() => {
+        const estimate = formatDeliveryEstimate(order.production_minutes || 0, order.shipping_days, !!order.is_pickup);
+        return estimate ? (
+          <p className="text-xs text-amber mt-1.5 flex items-center gap-1">
+            <span>⏱</span> {estimate}
+          </p>
+        ) : null;
+      })()}
 
       <div className="mt-3 pt-3 border-t border-line flex items-center justify-between gap-3 flex-wrap">
         <select

@@ -13,7 +13,7 @@ export default async function LojaPublicaPage({ params }: { params: Promise<{ sl
   const [{ data: products }, { data: userData }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, description, price, stock, image_url, available_colors, customizable, customization_price, category")
+      .select("id, name, description, price, stock, image_url, available_colors, customizable, customization_price, category, print_time_min")
       .eq("account_id", store.id)
       .eq("active", true)
       .order("created_at", { ascending: true }),

@@ -58,7 +58,9 @@ export default async function LojaPage() {
 
   const { data: orders } = await supabase
     .from("store_orders")
-    .select("id, customer_name, customer_email, customer_phone, items, total, status, created_at")
+    .select(
+      "id, customer_name, customer_email, customer_phone, items, total, status, created_at, production_minutes, shipping_days, is_pickup"
+    )
     .eq("account_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);

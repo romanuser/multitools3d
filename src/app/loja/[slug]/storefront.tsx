@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { checkoutStoreCart } from "@/lib/store/checkout-actions";
+import { formatDeliveryEstimate } from "@/lib/store/delivery-estimate";
 import { StoreHeader } from "./store-header";
 import { StoreAssistantWidget } from "./store-assistant-widget";
 
@@ -16,6 +17,7 @@ type Product = {
   customizable: boolean;
   customization_price: number;
   category: string | null;
+  print_time_min: number | null;
 };
 
 type CartLine = {
@@ -405,14 +407,19 @@ function CheckoutModal({
     }))
   );
 
+  const [isPickup, setIsPickup] = useState(false);
   const [cep, setCep] = useState("");
   const [quotes, setQuotes] = useState<{ id: number; name: string; company: string; price: number; deliveryTime?: number }[] | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<number | null>(null);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState("");
 
-  const shippingPrice = quotes?.find((q) => q.id === selectedQuote)?.price ?? 0;
+  const shippingPrice = isPickup ? 0 : quotes?.find((q) => q.id === selectedQuote)?.price ?? 0;
   const grandTotal = total + shippingPrice;
+
+  const productionMinutes = items.reduce((sum, { line, product }) => sum + (product.print_time_min || 0) * line.quantity, 0);
+  const chosenDeliveryDays = isPickup ? 0 : quotes?.find((q) => q.id === selectedQuote)?.deliveryTime ?? null;
+  const deliveryEstimate = formatDeliveryEstimate(productionMinutes, chosenDeliveryDays, isPickup);
 
   async function calculateShipping() {
     const digits = cep.replace(/\D/g, "");
@@ -508,25 +515,54 @@ function CheckoutModal({
         </div>
 
         <div className="mb-4 pb-4 border-b border-line">
-          <p className="text-sm text-ink-muted mb-2">Frete</p>
-          <div className="flex gap-2 mb-2">
-            <input
-              value={cep}
-              onChange={(e) => setCep(e.target.value)}
-              placeholder="Seu CEP"
-              className="input flex-1"
-            />
+          <div className="flex gap-2 mb-3">
             <button
               type="button"
-              onClick={calculateShipping}
-              disabled={shippingLoading}
-              className="text-sm text-amber border border-amber/40 rounded-full px-4 disabled:opacity-50 shrink-0"
+              onClick={() => setIsPickup(false)}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                !isPickup ? "border-amber bg-amber-soft text-ink" : "border-line text-ink-muted"
+              }`}
             >
-              {shippingLoading ? "Calculando…" : "Calcular"}
+              Receber em casa
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPickup(true)}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                isPickup ? "border-amber bg-amber-soft text-ink" : "border-line text-ink-muted"
+              }`}
+            >
+              Retirar no local
             </button>
           </div>
-          {shippingError && <p className="text-sm text-danger">{shippingError}</p>}
-          {quotes && quotes.length > 0 && (
+
+          {isPickup ? (
+            <p className="text-sm text-ink-muted">
+              Combine com a loja onde e quando retirar — sem custo de frete.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-ink-muted mb-2">Frete</p>
+              <div className="flex gap-2 mb-2">
+                <input
+                  value={cep}
+                  onChange={(e) => setCep(e.target.value)}
+                  placeholder="Seu CEP"
+                  className="input flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={calculateShipping}
+                  disabled={shippingLoading}
+                  className="text-sm text-amber border border-amber/40 rounded-full px-4 disabled:opacity-50 shrink-0"
+                >
+                  {shippingLoading ? "Calculando…" : "Calcular"}
+                </button>
+              </div>
+            </>
+          )}
+          {!isPickup && shippingError && <p className="text-sm text-danger">{shippingError}</p>}
+          {!isPickup && quotes && quotes.length > 0 && (
             <div className="space-y-1.5">
               {quotes.map((q) => (
                 <label
@@ -549,10 +585,16 @@ function CheckoutModal({
               ))}
             </div>
           )}
-          {quotes && quotes.length === 0 && (
+          {!isPickup && quotes && quotes.length === 0 && (
             <p className="text-sm text-ink-muted">Nenhuma opção de frete encontrada pra esse CEP.</p>
           )}
         </div>
+
+        {deliveryEstimate && (
+          <p className="text-sm text-ink-muted mb-4 flex items-center gap-1.5">
+            <span className="text-amber">⏱</span> {deliveryEstimate}
+          </p>
+        )}
 
         <div className="flex justify-between font-medium text-ink mb-4">
           <span>Total</span>
@@ -562,7 +604,9 @@ function CheckoutModal({
         <form action={formAction} className="space-y-3">
           <input type="hidden" name="accountId" value={accountId} />
           <input type="hidden" name="cart" value={cartJson} />
+          <input type="hidden" name="isPickup" value={isPickup ? "true" : "false"} />
           <input type="hidden" name="shippingPrice" value={shippingPrice} />
+          <input type="hidden" name="shippingDays" value={chosenDeliveryDays ?? ""} />
           <input
             type="hidden"
             name="shippingLabel"
@@ -580,10 +624,12 @@ function CheckoutModal({
             <span className="block text-sm text-ink-muted mb-1">WhatsApp (opcional)</span>
             <input name="customerPhone" className="input" />
           </label>
-          <label className="block">
-            <span className="block text-sm text-ink-muted mb-1">Endereço de entrega</span>
-            <textarea name="customerAddress" rows={2} className="input" placeholder="Rua, número, bairro, cidade" />
-          </label>
+          {!isPickup && (
+            <label className="block">
+              <span className="block text-sm text-ink-muted mb-1">Endereço de entrega</span>
+              <textarea name="customerAddress" rows={2} className="input" placeholder="Rua, número, bairro, cidade" />
+            </label>
+          )}
 
           {state?.error && <p className="text-sm text-danger">{state.error}</p>}
 

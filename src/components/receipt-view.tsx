@@ -2,6 +2,7 @@
 
 import { Brand } from "./brand";
 import { Icon } from "./icons";
+import { formatDeliveryEstimate } from "@/lib/store/delivery-estimate";
 
 type ReceiptItem = {
   description: string;
@@ -29,6 +30,11 @@ export function ReceiptView({
   shippingPrice,
   createdAt,
   status,
+  productionMinutes,
+  shippingDays,
+  isPickup,
+  paymentTransactionNsu,
+  paymentInvoiceSlug,
 }: {
   orderId: string;
   storeName: string;
@@ -40,7 +46,13 @@ export function ReceiptView({
   shippingPrice?: number | null;
   createdAt: string;
   status: string;
+  productionMinutes?: number | null;
+  shippingDays?: number | null;
+  isPickup?: boolean | null;
+  paymentTransactionNsu?: string | null;
+  paymentInvoiceSlug?: string | null;
 }) {
+  const deliveryEstimate = formatDeliveryEstimate(productionMinutes || 0, shippingDays ?? null, !!isPickup);
   return (
     <div>
       <div className="flex items-center justify-between mb-6 print:hidden">
@@ -81,6 +93,12 @@ export function ReceiptView({
           </div>
         </div>
 
+        {deliveryEstimate && (
+          <p className="text-sm text-ink mb-6 -mt-4 flex items-center gap-1.5">
+            <span className="text-amber">⏱</span> {deliveryEstimate}
+          </p>
+        )}
+
         <table className="w-full text-sm mb-6">
           <thead>
             <tr className="text-left text-xs text-ink-muted border-b border-line">
@@ -110,12 +128,20 @@ export function ReceiptView({
           </tbody>
         </table>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end mb-6">
           <div className="flex items-baseline gap-3">
             <span className="text-sm text-ink-muted">Total pago</span>
             <span className="font-spec text-xl text-amber font-medium">{money(total)}</span>
           </div>
         </div>
+
+        {(paymentTransactionNsu || paymentInvoiceSlug) && (
+          <div className="pt-4 border-t border-line text-xs text-ink-muted space-y-0.5">
+            <p className="font-medium text-ink mb-1">Comprovante de pagamento (InfinitePay)</p>
+            {paymentTransactionNsu && <p>Transação: {paymentTransactionNsu}</p>}
+            {paymentInvoiceSlug && <p>Fatura: {paymentInvoiceSlug}</p>}
+          </div>
+        )}
       </div>
     </div>
   );

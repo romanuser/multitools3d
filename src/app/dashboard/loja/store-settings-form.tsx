@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveStoreSettings } from "@/lib/store/actions";
+import { FieldTooltip } from "@/components/field-tooltip";
 
 export function StoreSettingsForm({
   initialSlug,
@@ -18,7 +19,13 @@ export function StoreSettingsForm({
     <form action={formAction} className="border border-line bg-surface rounded-2xl p-6 space-y-4">
       <div className="grid sm:grid-cols-2 gap-4">
         <label className="block">
-          <span className="block text-sm text-ink-muted mb-1">Link da loja</span>
+          <span className="block text-sm text-ink-muted mb-1">
+            Link da loja
+            <FieldTooltip>
+              O endereço que seus clientes vão acessar: multiferramenta3d.app/loja/SEU-LINK. Use só letras minúsculas,
+              números e hífen, sem espaço.
+            </FieldTooltip>
+          </span>
           <input
             name="storeSlug"
             defaultValue={initialSlug}
@@ -28,7 +35,13 @@ export function StoreSettingsForm({
           />
         </label>
         <label className="block">
-          <span className="block text-sm text-ink-muted mb-1">Sua InfiniteTag</span>
+          <span className="block text-sm text-ink-muted mb-1">
+            Sua InfiniteTag
+            <FieldTooltip>
+              O nome de usuário da SUA conta InfinitePay (sem o $ na frente) — é pra essa conta que o dinheiro das
+              vendas cai direto. Abra o app InfinitePay pra ver a sua.
+            </FieldTooltip>
+          </span>
           <input
             name="infinitepayHandle"
             defaultValue={initialHandle}
@@ -38,7 +51,10 @@ export function StoreSettingsForm({
           />
         </label>
         <label className="block sm:col-span-2">
-          <span className="block text-sm text-ink-muted mb-1">Seu WhatsApp</span>
+          <span className="block text-sm text-ink-muted mb-1">
+            Seu WhatsApp
+            <FieldTooltip>Pra onde o cliente pode te chamar depois de comprar. Inclua o DDD, só números.</FieldTooltip>
+          </span>
           <input
             name="whatsappNumber"
             defaultValue={initialWhatsapp}

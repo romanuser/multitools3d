@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { saveShippingSettings } from "@/lib/store/actions";
+import { FieldTooltip } from "@/components/field-tooltip";
 
 export function ShippingSettingsForm({
   initialCep,
@@ -22,13 +23,20 @@ export function ShippingSettingsForm({
     <div className="border border-line bg-surface rounded-2xl p-6 space-y-5">
       <form action={formAction} className="space-y-4">
         <label className="block max-w-xs">
-          <span className="block text-sm text-ink-muted mb-1">CEP de origem (de onde você envia)</span>
+          <span className="block text-sm text-ink-muted mb-1">
+            CEP de origem (de onde você envia)
+            <FieldTooltip>O CEP de onde os pacotes saem de verdade — usado pra calcular o frete até o cliente.</FieldTooltip>
+          </span>
           <input name="originCep" defaultValue={initialCep} placeholder="00000000" className="input" />
         </label>
 
         <div>
-          <p className="text-sm text-ink-muted mb-2">
+          <p className="text-sm text-ink-muted mb-2 flex items-center">
             Pacote padrão — usado quando um produto não tem medidas próprias cadastradas
+            <FieldTooltip>
+              Se um produto não tiver &quot;Medidas de envio&quot; preenchidas no cadastro dele, a loja usa essas
+              medidas aqui pra calcular o frete. Vale preencher com o tamanho da sua caixa mais comum.
+            </FieldTooltip>
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <label className="block">

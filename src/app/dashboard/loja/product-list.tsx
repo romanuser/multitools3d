@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { saveProduct, deleteProduct } from "@/lib/store/actions";
 import { FilamentRowsPicker } from "@/components/filament-rows-picker";
+import { FieldTooltip } from "@/components/field-tooltip";
 
 type Product = {
   id: string;
@@ -34,6 +35,20 @@ type FilamentOption = { id: string; label: string };
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+// Receita "completa" = tem impressora E (1 filamento+peso OU vários
+// filamentos cadastrados). Se só uma parte foi preenchida, é "incompleta"
+// — o produto não vai gerar peça sozinho na fila quando alguém comprar.
+function recipeStatus(product: Product): "none" | "partial" | "complete" {
+  const hasMulti = (product.filament_rows?.length ?? 0) > 0;
+  const hasSingle = !!(product.print_filament_id && product.print_weight_g);
+  const hasPrinter = !!product.print_printer_id;
+  const hasAnyFilament = hasMulti || hasSingle;
+
+  if (!hasPrinter && !hasAnyFilament) return "none";
+  if (hasPrinter && hasAnyFilament) return "complete";
+  return "partial";
+}
+
 export function ProductList({
   products,
   printers,
@@ -53,44 +68,75 @@ export function ProductList({
           Nenhum produto cadastrado ainda.
         </p>
       )}
-      {products.map((product) => (
-        <div key={product.id} className="border border-line bg-surface rounded-2xl p-4 flex items-center gap-4">
-          {product.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image_url} alt="" className="w-14 h-14 rounded-xl object-cover border border-line shrink-0" />
-          ) : (
-            <div className="w-14 h-14 rounded-xl bg-paper border border-line flex items-center justify-center text-ink-muted text-xs shrink-0">
-              sem foto
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-ink truncate">{product.name}</p>
-              {!product.active && (
-                <span className="text-xs text-ink-muted border border-line rounded-full px-2 py-0.5 shrink-0">
-                  inativo
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-ink-muted font-spec">
-              {money(product.price)} {product.stock != null && `· ${product.stock} em estoque`}
-            </p>
-          </div>
-          <div className="flex gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(product);
-                setShowForm(true);
-              }}
-              className="text-xs text-ink-muted hover:text-ink underline underline-offset-2"
-            >
-              Editar
-            </button>
-            <DeleteButton productId={product.id} />
-          </div>
+      {products.length > 0 && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {products.map((product) => {
+            const recipe = recipeStatus(product);
+            return (
+              <div key={product.id} className="border border-line bg-surface rounded-2xl overflow-hidden flex flex-col">
+                <div className="aspect-[4/3] bg-paper flex items-center justify-center relative">
+                  {product.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-ink-muted text-xs">sem foto</span>
+                  )}
+                  {!product.active && (
+                    <span className="absolute top-2 left-2 text-xs bg-paper/90 border border-line rounded-full px-2 py-0.5 text-ink-muted">
+                      Oculto na loja
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-4 flex-1 flex flex-col">
+                  {product.category && <p className="text-xs text-amber mb-0.5">{product.category}</p>}
+                  <p className="font-medium text-ink truncate">{product.name}</p>
+                  <p className="text-sm text-ink-muted font-spec mt-0.5">
+                    {money(product.price)}
+                    {product.stock != null && <span className="text-xs"> · {product.stock} em estoque</span>}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {product.available_colors.length > 0 && (
+                      <span className="text-xs text-ink-muted border border-line rounded-full px-2 py-0.5">
+                        {product.available_colors.length} {product.available_colors.length === 1 ? "cor" : "cores"}
+                      </span>
+                    )}
+                    {product.customizable && (
+                      <span className="text-xs text-ink-muted border border-line rounded-full px-2 py-0.5">
+                        personalizável
+                      </span>
+                    )}
+                  </div>
+
+                  {recipe === "partial" && (
+                    <p className="flex items-start gap-1.5 text-xs text-warn mt-3 rounded-lg border border-warn/30 bg-warn/10 px-2.5 py-2">
+                      <span className="shrink-0">⚠</span>
+                      Receita de impressão incompleta — falta{" "}
+                      {!product.print_printer_id ? "a impressora" : "o filamento/peso"}. Essa peça não entra na fila
+                      sozinha quando alguém comprar.
+                    </p>
+                  )}
+
+                  <div className="flex gap-3 mt-auto pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditing(product);
+                        setShowForm(true);
+                      }}
+                      className="text-xs text-ink-muted hover:text-ink underline underline-offset-2"
+                    >
+                      Editar
+                    </button>
+                    <DeleteButton productId={product.id} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      ))}
+      )}
 
       {!showForm && (
         <button
@@ -229,23 +275,42 @@ function ProductForm({
       <CategoryPicker initialValue={product?.category ?? ""} />
       <div className="grid sm:grid-cols-2 gap-4">
         <label className="block">
-          <span className="block text-sm text-ink-muted mb-1">Preço (R$)</span>
+          <span className="block text-sm text-ink-muted mb-1">
+            Preço (R$)
+            <FieldTooltip>O valor final que o cliente vê e paga por uma unidade, já com sua margem incluída.</FieldTooltip>
+          </span>
           <input type="number" step="0.01" min="0.01" name="price" defaultValue={product?.price} required className="input font-spec" />
         </label>
         <label className="block">
-          <span className="block text-sm text-ink-muted mb-1">Estoque (opcional)</span>
+          <span className="block text-sm text-ink-muted mb-1">
+            Estoque (opcional)
+            <FieldTooltip>
+              Quantas unidades prontas você já tem. Deixe em branco se a peça é feita sob encomenda (estoque
+              ilimitado) — nesse caso ela nunca aparece como esgotada.
+            </FieldTooltip>
+          </span>
           <input type="number" min="0" name="stock" defaultValue={product?.stock ?? ""} className="input font-spec" placeholder="deixe em branco = ilimitado" />
         </label>
       </div>
       <label className="flex items-center gap-2 text-sm text-ink">
         <input type="checkbox" name="active" defaultChecked={product?.active ?? true} className="accent-amber" />
         Visível na loja
+        <FieldTooltip>
+          Desmarque pra esconder o produto da loja temporariamente (ex: enquanto ajusta foto ou preço) sem apagar o
+          cadastro. Continua aparecendo aqui no seu painel normalmente.
+        </FieldTooltip>
       </label>
 
       <div className="border-t border-line pt-4">
         <p className="text-sm font-medium text-ink mb-1">Cores e personalização (opcional)</p>
         <label className="block mb-3">
-          <span className="block text-sm text-ink-muted mb-1">Cores disponíveis (separadas por vírgula)</span>
+          <span className="block text-sm text-ink-muted mb-1">
+            Cores disponíveis (separadas por vírgula)
+            <FieldTooltip>
+              Se o produto vier em mais de uma cor, liste todas aqui (ex: Branco, Preto, Verde). O cliente escolhe
+              uma na hora de comprar. Deixe em branco se não tiver opção de cor.
+            </FieldTooltip>
+          </span>
           <input
             name="availableColors"
             defaultValue={product?.available_colors?.join(", ") ?? ""}
@@ -265,10 +330,17 @@ function ProductForm({
             className="accent-amber"
           />
           Permite personalização (ex: nome gravado, cor customizada)
+          <FieldTooltip>
+            Marque se você aceita customizar essa peça (gravar um nome, mudar um detalhe). Ao marcar, aparece o campo
+            de quanto cobrar a mais por isso.
+          </FieldTooltip>
         </label>
         {customizable && (
           <label className="block max-w-xs">
-            <span className="block text-sm text-ink-muted mb-1">Valor extra da personalização (R$)</span>
+            <span className="block text-sm text-ink-muted mb-1">
+              Valor extra da personalização (R$)
+              <FieldTooltip>Quanto some ao preço quando o cliente marcar a opção de personalizar.</FieldTooltip>
+            </span>
             <input
               type="number"
               step="0.01"
@@ -286,11 +358,18 @@ function ProductForm({
         <p className="text-sm font-medium text-ink mb-1">Receita de impressão (opcional)</p>
         <p className="text-xs text-ink-muted mb-3">
           Se preencher isso, toda vez que um pedido desse produto for pago, a impressão entra
-          sozinha na fila.
+          sozinha na fila. <strong className="text-ink">Importante:</strong> precisa preencher a impressora E o(s)
+          filamento(s) — se faltar um dos dois, a peça não entra na fila sozinha.
         </p>
         <div className="grid sm:grid-cols-2 gap-4">
           <label className="block">
-            <span className="block text-sm text-ink-muted mb-1">Impressora</span>
+            <span className="block text-sm text-ink-muted mb-1">
+              Impressora
+              <FieldTooltip>
+                Em qual impressora essa peça deve rodar. Sem isso preenchido (mesmo com filamento escolhido), a peça
+                NÃO entra na fila sozinha.
+              </FieldTooltip>
+            </span>
             <select name="printPrinterId" defaultValue={product?.print_printer_id ?? ""} className="input">
               <option value="">Nenhuma (não entra na fila sozinho)</option>
               {printers.map((p) => (
@@ -301,7 +380,13 @@ function ProductForm({
             </select>
           </label>
           <div className="sm:col-span-2">
-            <span className="block text-sm text-ink-muted mb-1">Filamento(s) por unidade</span>
+            <span className="block text-sm text-ink-muted mb-1">
+              Filamento(s) por unidade
+              <FieldTooltip>
+                Qual filamento (e quantos gramas) uma unidade gasta. Pode usar mais de um filamento na mesma peça —
+                clique em &quot;+ Adicionar outro filamento&quot;.
+              </FieldTooltip>
+            </span>
             <FilamentRowsPicker
               name="filamentsJson"
               filaments={filaments}
@@ -316,7 +401,13 @@ function ProductForm({
             />
           </div>
           <label className="block">
-            <span className="block text-sm text-ink-muted mb-1">Tempo estimado (min, opcional)</span>
+            <span className="block text-sm text-ink-muted mb-1">
+              Tempo estimado (min, opcional)
+              <FieldTooltip>
+                Quanto tempo a impressão de 1 unidade leva, em minutos. Usado pra calcular o prazo de produção
+                mostrado pro cliente no pedido.
+              </FieldTooltip>
+            </span>
             <input
               type="number"
               name="printTimeMin"
