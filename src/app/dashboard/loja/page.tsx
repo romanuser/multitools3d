@@ -5,6 +5,7 @@ import { StoreSettingsForm } from "./store-settings-form";
 import { ShippingSettingsForm } from "./shipping-settings-form";
 import { ProductList } from "./product-list";
 import { OrderList } from "./order-list";
+import { StoreDashboard } from "./store-dashboard";
 
 export default async function LojaPage() {
   const supabase = await createClient();
@@ -99,6 +100,8 @@ export default async function LojaPage() {
           Cadastre seus produtos e compartilhe o link da sua loja com os clientes. As vendas caem
           direto na sua conta InfinitePay.
         </p>
+
+        <StoreDashboard products={productsWithFilaments} orders={ordersWithMessages} />
 
         <section className="mb-10">
           <h2 className="font-display text-lg text-ink mb-3">Configurações da loja</h2>
