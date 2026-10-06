@@ -18,22 +18,31 @@ export function QuoteCalculator({
   const [showPatternInfo, setShowPatternInfo] = useState(false);
 
   const [material, setMaterial] = useState("PLA");
-  const [filamentPrice, setFilamentPrice] = useState(99);
-  const [grams, setGrams] = useState(100);
-  const [watts, setWatts] = useState(200);
-  const [hours, setHours] = useState(5);
-  const [kwhPrice, setKwhPrice] = useState(0.8);
-  const [labor, setLabor] = useState(15);
-  const [fixedCosts, setFixedCosts] = useState(0);
-  const [margin, setMargin] = useState(30);
+  // Os campos numéricos guardam TEXTO, não número — assim dá pra apagar e
+  // digitar de novo sem o campo forçar um "0" no meio do caminho
+  // (problema clássico de input numérico controlado em React). O valor
+  // numérico de verdade (pra calcular) sai de toNumber() na hora de usar.
+  const [filamentPrice, setFilamentPrice] = useState("99");
+  const [grams, setGrams] = useState("100");
+  const [watts, setWatts] = useState("200");
+  const [hours, setHours] = useState("5");
+  const [kwhPrice, setKwhPrice] = useState("0.8");
+  const [labor, setLabor] = useState("15");
+  const [fixedCosts, setFixedCosts] = useState("0");
+  const [margin, setMargin] = useState("30");
+
+  const toNumber = (v: string) => {
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  };
 
   const [clientName, setClientName] = useState("");
   const [clientCompany, setClientCompany] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [description, setDescription] = useState("Peça personalizada em impressão 3D");
-  const [quantity, setQuantity] = useState(1);
-  const [validityDays, setValidityDays] = useState(7);
+  const [quantity, setQuantity] = useState("1");
+  const [validityDays, setValidityDays] = useState("7");
   const [notes, setNotes] = useState("");
 
   const [status, setStatus] = useState<{ kind: "idle" | "loading" | "error" | "success"; message?: string }>({
@@ -46,14 +55,23 @@ export function QuoteCalculator({
   );
 
   const result = useMemo(() => {
-    const filament = (Math.max(0, filamentPrice) * Math.max(0, grams)) / 1000;
-    const energy = (Math.max(0, watts) / 1000) * Math.max(0, hours) * Math.max(0, kwhPrice);
-    const production = filament + energy + Math.max(0, labor) + Math.max(0, fixedCosts);
-    const profit = (production * Math.max(0, margin)) / 100;
+    const fp = Math.max(0, toNumber(filamentPrice));
+    const g = Math.max(0, toNumber(grams));
+    const w = Math.max(0, toNumber(watts));
+    const h = Math.max(0, toNumber(hours));
+    const kwh = Math.max(0, toNumber(kwhPrice));
+    const lab = Math.max(0, toNumber(labor));
+    const fixed = Math.max(0, toNumber(fixedCosts));
+    const marg = Math.max(0, toNumber(margin));
+
+    const filament = (fp * g) / 1000;
+    const energy = (w / 1000) * h * kwh;
+    const production = filament + energy + lab + fixed;
+    const profit = (production * marg) / 100;
     return { filament, energy, production, profit, suggested: production + profit };
   }, [filamentPrice, grams, watts, hours, kwhPrice, labor, fixedCosts, margin]);
 
-  const total = result.suggested * Math.max(1, quantity);
+  const total = result.suggested * Math.max(1, toNumber(quantity));
 
   function choosePattern(id: string) {
     setSelectedPatternId(id);
@@ -73,14 +91,14 @@ export function QuoteCalculator({
       clientEmail,
       clientPhone,
       description,
-      quantity: Math.max(1, quantity),
-      validityDays: Math.max(1, validityDays),
+      quantity: Math.max(1, toNumber(quantity)),
+      validityDays: Math.max(1, toNumber(validityDays)),
       notes,
       filamentCost: result.filament,
       energyCost: result.energy,
-      laborCost: labor,
-      fixedCost: fixedCosts,
-      marginPercent: margin,
+      laborCost: toNumber(labor),
+      fixedCost: toNumber(fixedCosts),
+      marginPercent: toNumber(margin),
       unitPrice: result.suggested,
       total,
     });
@@ -150,7 +168,7 @@ export function QuoteCalculator({
     doc.setFont("helvetica", "normal");
     const descriptionLines = doc.splitTextToSize(description, 105);
     doc.text(descriptionLines, 19, y);
-    doc.text(String(quantity), 140, y);
+    doc.text(String(Math.max(1, toNumber(quantity))), 140, y);
     doc.text(money(result.suggested), 153, y);
     doc.text(money(total), 190, y, { align: "right" });
     y += Math.max(12, descriptionLines.length * 6 + 7);
@@ -192,14 +210,14 @@ export function QuoteCalculator({
 
   function reset() {
     setMaterial("PLA");
-    setFilamentPrice(99);
-    setGrams(100);
-    setWatts(200);
-    setHours(5);
-    setKwhPrice(0.8);
-    setLabor(15);
-    setFixedCosts(0);
-    setMargin(30);
+    setFilamentPrice("99");
+    setGrams("100");
+    setWatts("200");
+    setHours("5");
+    setKwhPrice("0.8");
+    setLabor("15");
+    setFixedCosts("0");
+    setMargin("30");
     setStatus({ kind: "idle" });
   }
 
@@ -279,17 +297,17 @@ export function QuoteCalculator({
             <div>
               <NumberField label="Consumo da impressora" suffix="W" value={watts} setValue={setWatts} />
               <Presets>
-                <PresetButton onClick={() => setWatts(120)}>Ender 3 · 120W</PresetButton>
-                <PresetButton onClick={() => setWatts(200)}>Bambu A1 · 200W</PresetButton>
-                <PresetButton onClick={() => setWatts(350)}>Bambu X1C · 350W</PresetButton>
+                <PresetButton onClick={() => setWatts("120")}>Ender 3 · 120W</PresetButton>
+                <PresetButton onClick={() => setWatts("200")}>Bambu A1 · 200W</PresetButton>
+                <PresetButton onClick={() => setWatts("350")}>Bambu X1C · 350W</PresetButton>
               </Presets>
             </div>
             <NumberField label="Tempo de impressão" suffix="horas" step="0.1" value={hours} setValue={setHours} />
             <div>
               <NumberField label="Valor do kWh" suffix="R$" step="0.01" value={kwhPrice} setValue={setKwhPrice} />
               <Presets>
-                <PresetButton onClick={() => setKwhPrice(0.8)}>Tarifa padrão</PresetButton>
-                <PresetButton onClick={() => setKwhPrice(0.95)}>Tarifa alta</PresetButton>
+                <PresetButton onClick={() => setKwhPrice("0.8")}>Tarifa padrão</PresetButton>
+                <PresetButton onClick={() => setKwhPrice("0.95")}>Tarifa alta</PresetButton>
               </Presets>
             </div>
           </div>
@@ -303,7 +321,7 @@ export function QuoteCalculator({
               <NumberField label="Margem de lucro" suffix="%" value={margin} setValue={setMargin} />
               <Presets>
                 {[30, 50, 80, 100].map((v) => (
-                  <PresetButton key={v} active={margin === v} onClick={() => setMargin(v)}>
+                  <PresetButton key={v} active={toNumber(margin) === v} onClick={() => setMargin(String(v))}>
                     {v}%
                   </PresetButton>
                 ))}
@@ -327,10 +345,10 @@ export function QuoteCalculator({
               <input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className="input" />
             </Field>
             <Field label="Quantidade">
-              <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="input" />
+              <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="input" />
             </Field>
             <Field label="Validade (dias)">
-              <input type="number" min="1" value={validityDays} onChange={(e) => setValidityDays(Number(e.target.value))} className="input" />
+              <input type="number" min="1" value={validityDays} onChange={(e) => setValidityDays(e.target.value)} className="input" />
             </Field>
           </div>
           <Field label="Descrição do item">
@@ -359,7 +377,7 @@ export function QuoteCalculator({
         <dl className="space-y-2 text-sm mb-4">
           <Row label="Filamento" value={money(result.filament)} />
           <Row label="Energia" value={money(result.energy)} />
-          <Row label="Mão de obra + fixos" value={money(labor + fixedCosts)} />
+          <Row label="Mão de obra + fixos" value={money(toNumber(labor) + toNumber(fixedCosts))} />
           <Row label="Custo de produção" value={money(result.production)} />
           <Row label="Lucro estimado" value={money(result.profit)} good />
         </dl>
@@ -368,7 +386,7 @@ export function QuoteCalculator({
           <p className="font-display text-xl text-ink">{money(result.suggested)}</p>
         </div>
         <div className="border-t border-dashed border-line mt-4 pt-4 mb-5">
-          <p className="text-xs text-ink-muted mb-1">Total do orçamento ({Math.max(1, quantity)}x)</p>
+          <p className="text-xs text-ink-muted mb-1">Total do orçamento ({Math.max(1, toNumber(quantity))}x)</p>
           <p className="font-display text-3xl text-amber tabular-nums">{money(total)}</p>
         </div>
 
@@ -419,8 +437,8 @@ function NumberField({
   step = "1",
 }: {
   label: string;
-  value: number;
-  setValue: (v: number) => void;
+  value: string;
+  setValue: (v: string) => void;
   suffix: string;
   step?: string;
 }) {
@@ -432,7 +450,7 @@ function NumberField({
           min="0"
           step={step}
           value={value}
-          onChange={(e) => setValue(Number(e.target.value))}
+          onChange={(e) => setValue(e.target.value)}
           className="w-full px-3 py-2.5 text-sm text-ink bg-transparent focus:outline-none font-spec tabular-nums"
         />
         <span className="text-xs text-ink-muted pr-3 whitespace-nowrap">{suffix}</span>

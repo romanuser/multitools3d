@@ -40,8 +40,8 @@ export function ShippingSettingsForm({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <label className="block">
-              <span className="block text-xs text-ink-muted mb-1">Peso (kg)</span>
-              <input type="number" step="0.01" name="defaultWeight" defaultValue={initialWeight} className="input font-spec" />
+              <span className="block text-xs text-ink-muted mb-1">Peso (g)</span>
+              <input type="number" min="1" step="1" name="defaultWeight" defaultValue={initialWeight} className="input font-spec" />
             </label>
             <label className="block">
               <span className="block text-xs text-ink-muted mb-1">Largura (cm)</span>

@@ -74,7 +74,10 @@ export async function quoteShipping(
       width: Math.max(width, 11),
       height: Math.max(height, 2),
       length: Math.max(length, 16),
-      weight,
+      // No banco o peso é guardado em GRAMAS (pra não precisar converter
+      // nada na hora de cadastrar) — a Melhor Envio exige o peso em
+      // quilos, então a conversão acontece só aqui, na hora da chamada.
+      weight: weight / 1000,
       insurance_value: Number(product.price || 0),
       quantity: item.quantity,
     };

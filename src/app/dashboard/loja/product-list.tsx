@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveProduct, deleteProduct } from "@/lib/store/actions";
+import { saveProduct, deleteProduct, reorderProduct } from "@/lib/store/actions";
 import { FilamentRowsPicker } from "@/components/filament-rows-picker";
 import { FieldTooltip } from "@/components/field-tooltip";
+import { Icon } from "@/components/icons";
 
 type Product = {
   id: string;
@@ -25,6 +26,9 @@ type Product = {
   customizable: boolean;
   customization_price: number;
   category: string | null;
+  color_filament_material: string | null;
+  color_filament_grams: number | null;
+  display_order: number;
   filament_rows?: { filament_stock_id: string; grams: number }[];
 };
 
@@ -39,9 +43,19 @@ const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curr
 // filamentos cadastrados). Se só uma parte foi preenchida, é "incompleta"
 // — o produto não vai gerar peça sozinho na fila quando alguém comprar.
 function recipeStatus(product: Product): "none" | "partial" | "complete" {
+  const hasPrinter = !!product.print_printer_id;
+
+  if (product.available_colors.length > 0) {
+    // Produto com cor: a receita é material + gramagem (a cor exata vem
+    // do cliente na hora da compra).
+    const hasColorRecipe = !!(product.color_filament_material && product.color_filament_grams);
+    if (!hasPrinter && !hasColorRecipe) return "none";
+    if (hasPrinter && hasColorRecipe) return "complete";
+    return "partial";
+  }
+
   const hasMulti = (product.filament_rows?.length ?? 0) > 0;
   const hasSingle = !!(product.print_filament_id && product.print_weight_g);
-  const hasPrinter = !!product.print_printer_id;
   const hasAnyFilament = hasMulti || hasSingle;
 
   if (!hasPrinter && !hasAnyFilament) return "none";
@@ -53,10 +67,12 @@ export function ProductList({
   products,
   printers,
   filaments,
+  materials,
 }: {
   products: Product[];
   printers: Printer[];
   filaments: FilamentOption[];
+  materials: string[];
 }) {
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -68,10 +84,17 @@ export function ProductList({
           Nenhum produto cadastrado ainda.
         </p>
       )}
+      {products.length > 1 && (
+        <p className="text-xs text-ink-muted -mb-1 flex items-center gap-1.5">
+          <Icon name="chevron" size={12} className="-rotate-90" />
+          Use as setinhas em cada card pra organizar a ordem que aparece na loja.
+        </p>
+      )}
       {products.length > 0 && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => {
+          {products.map((product, index) => {
             const recipe = recipeStatus(product);
+            const orderedIds = products.map((p) => p.id);
             return (
               <div key={product.id} className="border border-line bg-surface rounded-2xl overflow-hidden flex flex-col">
                 <div className="aspect-[4/3] bg-paper flex items-center justify-center relative">
@@ -85,6 +108,28 @@ export function ProductList({
                     <span className="absolute top-2 left-2 text-xs bg-paper/90 border border-line rounded-full px-2 py-0.5 text-ink-muted">
                       Oculto na loja
                     </span>
+                  )}
+                  {products.length > 1 && (
+                    <div className="absolute top-2 right-2 flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => reorderProduct(product.id, "up", orderedIds)}
+                        disabled={index === 0}
+                        aria-label="Mover pra cima"
+                        className="w-6 h-6 rounded-full bg-paper/90 border border-line flex items-center justify-center text-ink disabled:opacity-30 hover:border-amber/50"
+                      >
+                        <Icon name="chevron" size={13} className="rotate-[-90deg]" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => reorderProduct(product.id, "down", orderedIds)}
+                        disabled={index === products.length - 1}
+                        aria-label="Mover pra baixo"
+                        className="w-6 h-6 rounded-full bg-paper/90 border border-line flex items-center justify-center text-ink disabled:opacity-30 hover:border-amber/50"
+                      >
+                        <Icon name="chevron" size={13} className="rotate-90" />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -157,6 +202,7 @@ export function ProductList({
           product={editing}
           printers={printers}
           filaments={filaments}
+          materials={materials}
           onDone={() => setShowForm(false)}
         />
       )}
@@ -224,16 +270,20 @@ function ProductForm({
   product,
   printers,
   filaments,
+  materials,
   onDone,
 }: {
   product: Product | null;
   printers: Printer[];
   filaments: FilamentOption[];
+  materials: string[];
   onDone: () => void;
 }) {
   const [state, formAction, pending] = useActionState(saveProduct, undefined);
   const [preview, setPreview] = useState<string | null>(product?.image_url ?? null);
   const [customizable, setCustomizable] = useState(product?.customizable ?? false);
+  const [colorsText, setColorsText] = useState(product?.available_colors?.join(", ") ?? "");
+  const hasColors = colorsText.trim().length > 0;
 
   if (state !== undefined && !state.error && !pending) {
     queueMicrotask(onDone);
@@ -313,7 +363,8 @@ function ProductForm({
           </span>
           <input
             name="availableColors"
-            defaultValue={product?.available_colors?.join(", ") ?? ""}
+            value={colorsText}
+            onChange={(e) => setColorsText(e.target.value)}
             className="input"
             placeholder="Branco, Preto, Verde"
           />
@@ -380,25 +431,70 @@ function ProductForm({
             </select>
           </label>
           <div className="sm:col-span-2">
-            <span className="block text-sm text-ink-muted mb-1">
-              Filamento(s) por unidade
-              <FieldTooltip>
-                Qual filamento (e quantos gramas) uma unidade gasta. Pode usar mais de um filamento na mesma peça —
-                clique em &quot;+ Adicionar outro filamento&quot;.
-              </FieldTooltip>
-            </span>
-            <FilamentRowsPicker
-              name="filamentsJson"
-              filaments={filaments}
-              gramsLabel="Gramas"
-              initialRows={
-                product?.filament_rows?.length
-                  ? product.filament_rows.map((r) => ({ filamentStockId: r.filament_stock_id, grams: String(r.grams) }))
-                  : product?.print_filament_id
-                    ? [{ filamentStockId: product.print_filament_id, grams: String(product.print_weight_g ?? "") }]
-                    : undefined
-              }
-            />
+            {hasColors ? (
+              <>
+                <span className="block text-sm text-ink-muted mb-1">
+                  Filamento da cor escolhida pelo cliente
+                  <FieldTooltip>
+                    Como esse produto tem cores, você não escolhe o filamento exato aqui — só o material e a
+                    gramagem. Na hora da venda, o sistema desconta automaticamente do estoque da cor que o cliente
+                    escolher (dentro desse material). Importante: cadastre no Estoque um filamento desse material
+                    pra cada cor listada acima, senão o desconto não encontra o que descontar.
+                  </FieldTooltip>
+                </span>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <select
+                    name="colorFilamentMaterial"
+                    defaultValue={product?.color_filament_material ?? ""}
+                    className="input"
+                  >
+                    <option value="">Escolha o material</option>
+                    {materials.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.1"
+                    name="colorFilamentGrams"
+                    defaultValue={product?.color_filament_grams ?? ""}
+                    placeholder="Gramas"
+                    className="input font-spec"
+                  />
+                </div>
+                {materials.length === 0 && (
+                  <p className="text-xs text-warn mt-1.5">
+                    Você ainda não tem nenhum filamento cadastrado no Estoque — cadastre pelo menos um antes de
+                    preencher isso.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="block text-sm text-ink-muted mb-1">
+                  Filamento(s) por unidade
+                  <FieldTooltip>
+                    Qual filamento (e quantos gramas) uma unidade gasta. Pode usar mais de um filamento na mesma
+                    peça — clique em &quot;+ Adicionar outro filamento&quot;.
+                  </FieldTooltip>
+                </span>
+                <FilamentRowsPicker
+                  name="filamentsJson"
+                  filaments={filaments}
+                  gramsLabel="Gramas"
+                  initialRows={
+                    product?.filament_rows?.length
+                      ? product.filament_rows.map((r) => ({ filamentStockId: r.filament_stock_id, grams: String(r.grams) }))
+                      : product?.print_filament_id
+                        ? [{ filamentStockId: product.print_filament_id, grams: String(product.print_weight_g ?? "") }]
+                        : undefined
+                  }
+                />
+              </>
+            )}
           </div>
           <label className="block">
             <span className="block text-sm text-ink-muted mb-1">
@@ -426,8 +522,8 @@ function ProductForm({
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <label className="block">
-            <span className="block text-xs text-ink-muted mb-1">Peso (kg)</span>
-            <input type="number" step="0.01" name="shippingWeight" defaultValue={product?.shipping_weight ?? ""} className="input font-spec" />
+            <span className="block text-xs text-ink-muted mb-1">Peso (g)</span>
+            <input type="number" min="1" step="1" name="shippingWeight" defaultValue={product?.shipping_weight ?? ""} className="input font-spec" />
           </label>
           <label className="block">
             <span className="block text-xs text-ink-muted mb-1">Largura (cm)</span>
