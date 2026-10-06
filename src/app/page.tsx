@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Script from "next/script";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Brand } from "@/components/brand";
@@ -30,6 +31,15 @@ export default async function Home() {
 
   return (
     <main className="bg-paper text-ink">
+      {/* Anúncio só entra aqui — a única página com conteúdo público de
+          verdade pra exibir anúncio. Nunca no login, cadastro, painel ou
+          qualquer tela atrás de login (é o que o Google exige). */}
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8764465578125903"
+        crossOrigin="anonymous"
+        strategy="afterInteractive"
+      />
       <Nav />
       <Hero />
       <Features />

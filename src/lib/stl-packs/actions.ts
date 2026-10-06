@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { STL_FILES_BUCKET, STL_COVERS_BUCKET } from "./config";
 import { runDailyStlSelection } from "./select-daily";
+import { notifyVipUsersOfNewStl } from "@/lib/email/stl-notification";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -101,12 +102,19 @@ export async function adminDeleteStlFile(fileId: string, filePath: string): Prom
 
 // Botão "Publicar agora" no Admin — roda a mesma seleção que a função
 // agendada da Netlify vai rodar sozinha todo dia.
-export async function adminRunDailyStlSelectionNow(): Promise<{ error?: string; picked?: number }> {
+export async function adminRunDailyStlSelectionNow(): Promise<{ error?: string; picked?: number; emailsSent?: number }> {
   await requireAdmin();
   const result = await runDailyStlSelection();
+
+  let emailsSent = 0;
+  if (result.picked > 0) {
+    const notified = await notifyVipUsersOfNewStl();
+    emailsSent = notified.sent;
+  }
+
   revalidatePath("/admin/stl-packs");
   revalidatePath("/dashboard/stl-packs");
-  return { picked: result.picked };
+  return { picked: result.picked, emailsSent };
 }
 
 // Gera um link de download temporário (1 hora) pro usuário final.

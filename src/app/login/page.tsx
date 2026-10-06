@@ -35,7 +35,12 @@ export default function LoginPage() {
             <input name="email" type="email" required className="input" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1">Senha</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-ink-muted">Senha</label>
+              <Link href="/esqueci-senha" className="text-xs text-amber hover:underline">
+                Esqueci minha senha
+              </Link>
+            </div>
             <input name="password" type="password" required className="input" />
           </div>
 

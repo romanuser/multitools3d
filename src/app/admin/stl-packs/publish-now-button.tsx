@@ -12,7 +12,10 @@ export function PublishNowButton() {
     startTransition(async () => {
       const res = await adminRunDailyStlSelectionNow();
       if (res.error) setResult("Erro: " + res.error);
-      else setResult(`Publicados ${res.picked} arquivo(s) hoje.`);
+      else {
+        const emailPart = res.picked && res.picked > 0 ? ` · ${res.emailsSent ?? 0} VIP(s) avisado(s) por e-mail` : "";
+        setResult(`Publicados ${res.picked} arquivo(s) hoje.${emailPart}`);
+      }
     });
   }
 
