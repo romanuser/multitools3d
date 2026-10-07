@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Icon } from "@/components/icons";
 
 type Printer = { id: string; name: string; model: string | null; status: string; photo_url: string | null };
 type Filament = {
@@ -42,21 +43,40 @@ type StoreStats = {
   revenue: number;
   productCount: number;
   lowStockProducts: number;
-  salesByDay: { label: string; total: number }[];
+  salesByDay: { label: string; dateStr: string; total: number }[];
+  todayRevenue: number;
+  yesterdayRevenue: number;
+  thisWeek: number;
+  lastWeek: number;
+  topProducts: { name: string; quantity: number; revenue: number }[];
+  totalIncome30d: number;
+  paidExpenses30d: number;
+  profitLoss30d: number;
+  pendingReceivable: number;
+  overdueReceivableCount: number;
+  pendingPayable: number;
+  overduePayableCount: number;
 };
 
 const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function pctChange(current: number, previous: number) {
+  if (previous <= 0) return current > 0 ? null : 0;
+  return ((current - previous) / previous) * 100;
+}
 
 export function OverviewBoard({
   printers,
   filaments,
   jobs,
   storeStats,
+  stockValue,
 }: {
   printers: Printer[];
   filaments: Filament[];
   jobs: Job[];
   storeStats: StoreStats | null;
+  stockValue: number;
 }) {
   const activeJobByPrinter = new Map(jobs.filter((j) => j.status === "imprimindo").map((j) => [j.printer_id, j]));
   const failedJobs = jobs.filter((j) => j.status === "falha");
@@ -91,6 +111,118 @@ export function OverviewBoard({
         </section>
       )}
 
+      {storeStats && (
+        <section>
+          <h2 className="font-display text-lg text-ink mb-3">Resultado (últimos 30 dias)</h2>
+          <div className="grid sm:grid-cols-3 gap-4 mb-4">
+            <div className="border border-line bg-surface rounded-2xl p-5">
+              <p className="text-xs text-ink-muted mb-1">Receita total</p>
+              <p className="font-display text-xl text-ink">{money(storeStats.totalIncome30d)}</p>
+              <p className="text-xs text-ink-muted mt-0.5">loja + consignado recebido</p>
+            </div>
+            <div className="border border-line bg-surface rounded-2xl p-5">
+              <p className="text-xs text-ink-muted mb-1">Despesas pagas</p>
+              <p className="font-display text-xl text-ink">{money(storeStats.paidExpenses30d)}</p>
+              <p className="text-xs text-ink-muted mt-0.5">pró-labore, insumos, custos</p>
+            </div>
+            <div
+              className={`rounded-2xl p-5 border ${
+                storeStats.profitLoss30d >= 0 ? "border-good/30 bg-good/10" : "border-danger/30 bg-danger/10"
+              }`}
+            >
+              <p className="text-xs text-ink-muted mb-1">{storeStats.profitLoss30d >= 0 ? "Lucro" : "Prejuízo"}</p>
+              <p className={`font-display text-xl ${storeStats.profitLoss30d >= 0 ? "text-good" : "text-danger"}`}>
+                {money(Math.abs(storeStats.profitLoss30d))}
+              </p>
+              <p className="text-xs text-ink-muted mt-0.5">receita − despesas, no período</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Link
+              href="/dashboard/financeiro/receber"
+              className="border border-line bg-surface rounded-2xl p-4 hover:border-amber/50 transition-colors"
+            >
+              <p className="text-xs text-ink-muted mb-1">A receber (em aberto)</p>
+              <p className="font-display text-lg text-ink">{money(storeStats.pendingReceivable)}</p>
+              {storeStats.overdueReceivableCount > 0 && (
+                <p className="text-xs text-danger mt-0.5">{storeStats.overdueReceivableCount} atrasada(s)</p>
+              )}
+            </Link>
+            <Link
+              href="/dashboard/financeiro/pagar"
+              className="border border-line bg-surface rounded-2xl p-4 hover:border-amber/50 transition-colors"
+            >
+              <p className="text-xs text-ink-muted mb-1">A pagar (em aberto)</p>
+              <p className="font-display text-lg text-ink">{money(storeStats.pendingPayable)}</p>
+              {storeStats.overduePayableCount > 0 && (
+                <p className="text-xs text-danger mt-0.5">{storeStats.overduePayableCount} atrasada(s)</p>
+              )}
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {storeStats && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-lg text-ink">Vendas</h2>
+            <Link href="/dashboard/loja" className="text-xs text-amber hover:underline underline-offset-2">
+              Ver loja
+            </Link>
+          </div>
+
+          <div className="grid sm:grid-cols-4 gap-4 mb-4">
+            <TrendCard label="Hoje" value={storeStats.todayRevenue} compare={storeStats.yesterdayRevenue} compareLabel="ontem" />
+            <TrendCard label="Essa semana" value={storeStats.thisWeek} compare={storeStats.lastWeek} compareLabel="semana passada" />
+            <StatCard label="Pedidos (30d)" value={String(storeStats.totalOrders)} sub={`${storeStats.pendingOrders} aguardando pagamento`} />
+            <StatCard
+              label="Estoque baixo"
+              value={String(storeStats.lowStockProducts)}
+              tone={storeStats.lowStockProducts > 0 ? "danger" : undefined}
+            />
+          </div>
+
+          <div className="grid lg:grid-cols-5 gap-4">
+            <div className="lg:col-span-3 border border-line bg-surface rounded-2xl p-4">
+              <p className="text-xs text-ink-muted mb-3">Vendas pagas — últimos 30 dias</p>
+              <div className="flex items-end gap-[3px] h-24">
+                {storeStats.salesByDay.map((day) => {
+                  const max = Math.max(1, ...storeStats.salesByDay.map((d) => d.total));
+                  const height = Math.max(3, (day.total / max) * 100);
+                  return (
+                    <div
+                      key={day.dateStr}
+                      className="flex-1 bg-amber/80 rounded-sm hover:bg-amber transition-colors"
+                      style={{ height: `${height}%` }}
+                      title={`${day.label}: ${money(day.total)}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 border border-line bg-surface rounded-2xl p-4">
+              <p className="text-xs text-ink-muted mb-3">Produtos mais vendidos</p>
+              {storeStats.topProducts.length === 0 ? (
+                <p className="text-xs text-ink-muted">Sem vendas nos últimos 30 dias.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {storeStats.topProducts.map((p, i) => (
+                    <div key={p.name} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-ink-muted truncate">
+                        {i + 1}. {p.name} <span className="text-ink-muted/70">({p.quantity}x)</span>
+                      </span>
+                      <span className="font-spec text-ink shrink-0">{money(p.revenue)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-lg text-ink">Impressoras</h2>
@@ -112,7 +244,14 @@ export function OverviewBoard({
       </section>
 
       <section>
-        <h2 className="font-display text-lg text-ink mb-3">Estoque de filamento</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display text-lg text-ink">Estoque de filamento</h2>
+          {stockValue > 0 && (
+            <span className="text-xs text-ink-muted">
+              Valor em estoque: <span className="text-ink font-spec">{money(stockValue)}</span>
+            </span>
+          )}
+        </div>
         {filaments.length === 0 ? (
           <EmptyState href="/dashboard/estoque" label="Cadastrar filamento" />
         ) : (
@@ -123,43 +262,34 @@ export function OverviewBoard({
           </div>
         )}
       </section>
+    </div>
+  );
+}
 
-      {storeStats && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display text-lg text-ink">Loja</h2>
-            <Link href="/dashboard/loja" className="text-xs text-amber hover:underline underline-offset-2">
-              Ver loja
-            </Link>
-          </div>
-          <div className="grid sm:grid-cols-4 gap-4 mb-4">
-            <StatCard label="Faturado (pago)" value={money(storeStats.revenue)} />
-            <StatCard label="Pedidos" value={String(storeStats.totalOrders)} sub={`${storeStats.pendingOrders} aguardando pagamento`} />
-            <StatCard label="Produtos" value={String(storeStats.productCount)} />
-            <StatCard
-              label="Estoque baixo"
-              value={String(storeStats.lowStockProducts)}
-              tone={storeStats.lowStockProducts > 0 ? "danger" : undefined}
-            />
-          </div>
-          <div className="border border-line bg-surface rounded-2xl p-4">
-            <p className="text-xs text-ink-muted mb-3">Vendas pagas nos últimos 7 dias</p>
-            <div className="flex items-end gap-2 h-24">
-              {storeStats.salesByDay.map((day) => {
-                const max = Math.max(1, ...storeStats.salesByDay.map((d) => d.total));
-                const height = Math.max(4, (day.total / max) * 100);
-                return (
-                  <div key={day.label} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full bg-paper rounded-t-md overflow-hidden flex items-end" style={{ height: "80px" }}>
-                      <div className="w-full bg-amber rounded-t-md" style={{ height: `${height}%` }} />
-                    </div>
-                    <span className="text-xs text-ink-muted capitalize">{day.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+function TrendCard({
+  label,
+  value,
+  compare,
+  compareLabel,
+}: {
+  label: string;
+  value: number;
+  compare: number;
+  compareLabel: string;
+}) {
+  const change = pctChange(value, compare);
+  return (
+    <div className="border border-line bg-surface rounded-2xl p-4">
+      <p className="text-xs text-ink-muted mb-1">{label}</p>
+      <p className="font-display text-xl text-ink">{money(value)}</p>
+      {change != null ? (
+        <p className={`text-xs mt-0.5 flex items-center gap-1 ${change >= 0 ? "text-good" : "text-danger"}`}>
+          <Icon name="trend" size={11} className={change < 0 ? "rotate-180" : ""} />
+          {change >= 0 ? "+" : ""}
+          {change.toFixed(0)}% vs {compareLabel}
+        </p>
+      ) : (
+        <p className="text-xs text-ink-muted mt-0.5">vs {compareLabel}: sem base de comparação</p>
       )}
     </div>
   );
