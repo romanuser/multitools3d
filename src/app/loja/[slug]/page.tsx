@@ -14,9 +14,10 @@ export default async function LojaPublicaPage({ params }: { params: Promise<{ sl
   const [{ data: products }, { data: userData }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, description, price, stock, image_url, available_colors, customizable, customization_price, category, print_time_min")
+      .select("id, name, description, price, stock, image_url, available_colors, customizable, customization_price, category, print_time_min, display_order")
       .eq("account_id", store.id)
       .eq("active", true)
+      .order("display_order", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase.auth.getUser(),
   ]);
@@ -41,6 +42,7 @@ export default async function LojaPublicaPage({ params }: { params: Promise<{ sl
         storeSlug={slug}
         companyName={store.companyName || "Loja"}
         logoUrl={store.logoUrl}
+        whatsappNumber={store.whatsappNumber}
         products={products ?? []}
         customerEmail={userData.user?.email ?? null}
       />

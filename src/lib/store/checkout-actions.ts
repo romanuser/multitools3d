@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createStoreCheckoutLink } from "@/lib/store/infinitepay";
+import { createPrintJobsForOrder } from "@/lib/store/print-integration";
 import { redirect } from "next/navigation";
 
 export type CheckoutState = { error?: string } | undefined;
@@ -122,6 +123,15 @@ export async function checkoutStoreCart(
 
   if (error || !order) return { error: "Não consegui criar o pedido: " + (error?.message || "") };
 
+  // As peças entram na fila assim que o pedido é feito — não espera o
+  // pagamento confirmar. Se isso falhar por algum motivo, não trava a
+  // compra: o lojista sempre pode criar a impressão na mão depois.
+  try {
+    await createPrintJobsForOrder(admin, accountId, items);
+  } catch (err) {
+    console.error("[checkout] falha ao criar peças na fila:", err);
+  }
+
   let checkoutUrl: string;
   try {
     const paymentItems = items.map((i) => ({ description: i.description, quantity: i.quantity, price: i.unitPrice }));
@@ -152,7 +162,7 @@ export async function getStoreBySlug(slug: string) {
   const admin = createAdminClient();
   const { data } = await admin
     .from("accounts")
-    .select("id, company_name, company_logo_url, plan, plan_expires_at")
+    .select("id, company_name, company_logo_url, whatsapp_number, plan, plan_expires_at")
     .eq("store_slug", slug)
     .maybeSingle();
 
@@ -160,5 +170,10 @@ export async function getStoreBySlug(slug: string) {
   // STLs continua exclusivo do VIP.
   if (!data) return null;
 
-  return { id: data.id, companyName: data.company_name, logoUrl: data.company_logo_url };
+  return {
+    id: data.id,
+    companyName: data.company_name,
+    logoUrl: data.company_logo_url,
+    whatsappNumber: data.whatsapp_number as string | null,
+  };
 }

@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { OrderStatus } from "./order-status";
-import { createPrintJobsForOrder } from "./print-integration";
 
 const PRODUCT_LIMIT = 300;
 
@@ -97,6 +96,56 @@ export async function saveStoreSettings(
   return { success: "Configurações da loja salvas." };
 }
 
+// ---------------------------------------------------------------------
+// Troca a ordem de exibição de um produto com o vizinho (pra cima ou pra
+// baixo), dentro da lista já ordenada que a tela mostra. Recebe a lista
+// de IDs na ordem atual pra saber exatamente quem é o vizinho — assim
+// não depende de nenhum cálculo "esperto" de número, só troca os dois.
+// ---------------------------------------------------------------------
+export async function reorderProduct(
+  productId: string,
+  direction: "up" | "down",
+  orderedIds: string[]
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const index = orderedIds.indexOf(productId);
+  if (index === -1) return { error: "Produto não encontrado na lista." };
+
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= orderedIds.length) return {}; // já está na ponta, não faz nada
+
+  const otherId = orderedIds[swapIndex];
+
+  const { data: rows } = await supabase
+    .from("products")
+    .select("id, display_order")
+    .in("id", [productId, otherId])
+    .eq("account_id", user.id);
+
+  const current = rows?.find((r) => r.id === productId);
+  const other = rows?.find((r) => r.id === otherId);
+  if (!current || !other) return { error: "Não consegui achar os produtos pra trocar." };
+
+  // Se os dois tiverem a mesma ordem (ex: tudo em 0, ainda não organizado
+  // antes), usa a posição na lista como ordem inicial pra já nascer
+  // distinto — evita ficar "preso" sem trocar de lugar visualmente.
+  const currentOrder = current.display_order ?? index;
+  const otherOrder = other.display_order ?? swapIndex;
+  const [newCurrent, newOther] =
+    currentOrder === otherOrder ? [swapIndex, index] : [otherOrder, currentOrder];
+
+  await supabase.from("products").update({ display_order: newCurrent }).eq("id", productId).eq("account_id", user.id);
+  await supabase.from("products").update({ display_order: newOther }).eq("id", otherId).eq("account_id", user.id);
+
+  revalidatePath("/dashboard/loja");
+  return {};
+}
+
 export type ProductState = { error?: string } | undefined;
 
 export async function saveProduct(_prevState: ProductState, formData: FormData): Promise<ProductState> {
@@ -116,18 +165,36 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
   const printPrinterId = String(formData.get("printPrinterId") || "") || null;
   const printTimeMin = formData.get("printTimeMin") ? Number(formData.get("printTimeMin")) : null;
 
-  // Filamento(s) da receita de impressão. 1 filamento só: grava do jeito
-  // de sempre, nas colunas antigas. Mais de 1: colunas antigas ficam
-  // vazias, e as linhas vão pra tabela product_filaments.
+  const availableColorsRaw = String(formData.get("availableColors") || "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  const hasColors = availableColorsRaw.length > 0;
+
+  // Filamento(s) da receita de impressão.
+  // - Produto COM cor: a receita vira só material + gramagem (a cor de
+  //   verdade vem do cliente na hora da compra) — colunas antigas e
+  //   product_filaments ficam vazias nesse caso.
+  // - Produto SEM cor: continua do jeito de sempre (1 filamento vai nas
+  //   colunas antigas, mais de 1 vai pra product_filaments).
   type FilamentRowInput = { filamentStockId: string; grams: string };
   let filamentRows: { filamentStockId: string; grams: number }[] = [];
-  try {
-    const raw = JSON.parse(String(formData.get("filamentsJson") || "[]")) as FilamentRowInput[];
-    filamentRows = raw
-      .map((r) => ({ filamentStockId: r.filamentStockId, grams: Number(r.grams) }))
-      .filter((r) => r.filamentStockId && r.grams > 0);
-  } catch {
-    filamentRows = [];
+  let colorFilamentMaterial: string | null = null;
+  let colorFilamentGrams: number | null = null;
+
+  if (hasColors) {
+    colorFilamentMaterial = String(formData.get("colorFilamentMaterial") || "").trim() || null;
+    const gramsRaw = Number(formData.get("colorFilamentGrams") || 0);
+    colorFilamentGrams = gramsRaw > 0 ? gramsRaw : null;
+  } else {
+    try {
+      const raw = JSON.parse(String(formData.get("filamentsJson") || "[]")) as FilamentRowInput[];
+      filamentRows = raw
+        .map((r) => ({ filamentStockId: r.filamentStockId, grams: Number(r.grams) }))
+        .filter((r) => r.filamentStockId && r.grams > 0);
+    } catch {
+      filamentRows = [];
+    }
   }
   const isSingleFilament = filamentRows.length === 1;
   const printFilamentId = isSingleFilament ? filamentRows[0].filamentStockId : null;
@@ -136,10 +203,7 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
   const shippingWidth = formData.get("shippingWidth") ? Number(formData.get("shippingWidth")) : null;
   const shippingHeight = formData.get("shippingHeight") ? Number(formData.get("shippingHeight")) : null;
   const shippingLength = formData.get("shippingLength") ? Number(formData.get("shippingLength")) : null;
-  const availableColors = String(formData.get("availableColors") || "")
-    .split(",")
-    .map((c) => c.trim())
-    .filter(Boolean);
+  const availableColors = availableColorsRaw;
   const customizable = formData.get("customizable") === "on";
   const customizationPrice = customizable ? Number(formData.get("customizationPrice") || 0) : 0;
   const category = String(formData.get("category") || "").trim() || null;
@@ -186,6 +250,8 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     customizable: boolean;
     customization_price: number;
     category: string | null;
+    color_filament_material: string | null;
+    color_filament_grams: number | null;
   } = {
     account_id: user.id,
     name,
@@ -205,6 +271,8 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
     customizable,
     customization_price: customizationPrice,
     category,
+    color_filament_material: colorFilamentMaterial,
+    color_filament_grams: colorFilamentGrams,
   };
 
   if (!productId) payload.slug = slug;
@@ -278,13 +346,6 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: current } = await supabase
-    .from("store_orders")
-    .select("status, items")
-    .eq("id", orderId)
-    .eq("account_id", user.id)
-    .maybeSingle();
-
   const { error } = await supabase
     .from("store_orders")
     .update({ status, updated_at: new Date().toISOString() })
@@ -293,11 +354,9 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
 
   if (error) return { error: error.message };
 
-  // Se acabou de virar "pago" agora (não era antes), cria as impressões
-  // na fila automaticamente, seguindo a receita de cada produto.
-  if (status === "PAGAMENTO_CONFIRMADO" && current?.status !== "PAGAMENTO_CONFIRMADO") {
-    await createPrintJobsForOrder(supabase, user.id, current?.items || []);
-  }
+  // A peça já entra na fila na hora em que o pedido é feito (não espera
+  // mais o pagamento confirmar) — mudar o status aqui não precisa criar
+  // nada de novo.
 
   revalidatePath("/dashboard/loja");
   revalidatePath("/dashboard/fila");

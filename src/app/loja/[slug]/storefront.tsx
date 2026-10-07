@@ -41,6 +41,7 @@ export function Storefront({
   logoUrl,
   products,
   customerEmail,
+  whatsappNumber,
 }: {
   accountId: string;
   storeSlug: string;
@@ -48,6 +49,7 @@ export function Storefront({
   logoUrl: string | null;
   products: Product[];
   customerEmail: string | null;
+  whatsappNumber: string | null;
 }) {
   const [cart, setCart] = useState<Record<string, CartLine>>({});
   const [showCheckout, setShowCheckout] = useState(false);
@@ -67,6 +69,10 @@ export function Storefront({
       ...c,
       [key]: { key, productId, color, customized, quantity: (c[key]?.quantity || 0) + 1 },
     }));
+    // Abre o carrinho na hora, assim que adiciona qualquer produto — o
+    // cliente já vê o que colocou, sem precisar procurar a barrinha
+    // embaixo da tela.
+    setShowCheckout(true);
   }
   function changeQty(key: string, qty: number) {
     setCart((c) => {
@@ -188,12 +194,38 @@ export function Storefront({
         )}
       </div>
 
+      {whatsappNumber && <WhatsAppBubble whatsappNumber={whatsappNumber} companyName={companyName} />}
+
       <StoreAssistantWidget
         products={products.map((p) => ({ id: p.id, name: p.name, price: p.price }))}
         customerEmail={customerEmail}
         onAddToCart={(productId) => addToCart(productId)}
       />
     </main>
+  );
+}
+
+function WhatsAppBubble({ whatsappNumber, companyName }: { whatsappNumber: string; companyName: string }) {
+  const digits = whatsappNumber.replace(/\D/g, "");
+  // Número brasileiro sem DDI (10 ou 11 dígitos) ganha o 55 na frente —
+  // com DDI (12+ dígitos) usa como está.
+  const phone = digits.length <= 11 ? `55${digits}` : digits;
+  const message = `Oi! Vim da loja ${companyName} e queria tirar uma dúvida.`;
+  const href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Falar com a loja no WhatsApp"
+      className="fixed bottom-24 right-5 z-50 w-14 h-14 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+    >
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+        <path d="M12.04 2c-5.46 0-9.886 4.426-9.886 9.886 0 1.742.457 3.442 1.325 4.943L2.057 22l5.3-1.39a9.86 9.86 0 0 0 4.683 1.192h.004c5.46 0 9.886-4.426 9.886-9.886S17.5 2 12.04 2zm0 17.896a8.23 8.23 0 0 1-4.198-1.149l-.3-.178-3.146.825.84-3.07-.196-.315a8.22 8.22 0 0 1-1.258-4.37c0-4.546 3.699-8.245 8.258-8.245 4.546 0 8.245 3.699 8.245 8.258 0 4.546-3.699 8.244-8.245 8.244z" />
+      </svg>
+    </a>
   );
 }
 
@@ -299,7 +331,10 @@ function ProductDetailModal({
   function handleAdd() {
     onAdd(product.id, color, customized);
     setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
+    // Fecha o detalhe logo em seguida — o carrinho já abre por cima
+    // sozinho (addToCart cuida disso), então não precisa dos dois
+    // abertos ao mesmo tempo.
+    setTimeout(onClose, 400);
   }
 
   return (
@@ -460,9 +495,14 @@ function CheckoutModal({
       <div className="bg-surface border border-line rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <p className="font-display text-lg text-ink">Finalizar pedido</p>
-          <button type="button" onClick={onClose} className="text-ink-muted hover:text-ink text-xl leading-none">
-            ×
-          </button>
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={onClose} className="text-sm text-amber hover:underline">
+              Continuar comprando
+            </button>
+            <button type="button" onClick={onClose} aria-label="Fechar" className="text-ink-muted hover:text-ink text-xl leading-none">
+              ×
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2 text-sm mb-4 pb-4 border-b border-line">

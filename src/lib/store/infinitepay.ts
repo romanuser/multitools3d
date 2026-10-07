@@ -1,7 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSiteUrl } from "@/lib/plans/infinitepay";
-import { createPrintJobsForOrder } from "@/lib/store/print-integration";
 
 const API_BASE = "https://api.checkout.infinitepay.io";
 
@@ -130,7 +129,8 @@ export async function confirmStoreOrder(input: { orderId: string; transactionNsu
     })
     .eq("id", order.id);
 
-  await createPrintJobsForOrder(admin, order.account_id, order.items || []);
+  // A peça já entrou na fila na hora em que o pedido foi feito (não
+  // espera mais o pagamento confirmar) — não cria de novo aqui.
 
   return { paid: true };
 }

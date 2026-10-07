@@ -26,9 +26,10 @@ export default async function LojaPage() {
   const { data: products } = await supabase
     .from("products")
     .select(
-      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min, shipping_weight, shipping_width, shipping_height, shipping_length, available_colors, customizable, customization_price, category"
+      "id, name, description, price, stock, active, image_url, print_printer_id, print_filament_id, print_weight_g, print_time_min, shipping_weight, shipping_width, shipping_height, shipping_length, available_colors, customizable, customization_price, category, color_filament_material, color_filament_grams, display_order"
     )
     .eq("account_id", user.id)
+    .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
 
   // Produtos com mais de um filamento na receita — os com só 1 usam
@@ -144,6 +145,7 @@ export default async function LojaPage() {
             products={productsWithFilaments}
             printers={printers ?? []}
             filaments={(filaments ?? []).map((f) => ({ id: f.id, label: `${f.material} · ${f.color}` }))}
+            materials={[...new Set((filaments ?? []).map((f) => f.material))].sort()}
           />
         </section>
 
