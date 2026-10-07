@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { checkoutStoreCart } from "@/lib/store/checkout-actions";
 import { formatDeliveryEstimate } from "@/lib/store/delivery-estimate";
 import { StoreHeader } from "./store-header";
@@ -51,7 +51,34 @@ export function Storefront({
   customerEmail: string | null;
   whatsappNumber: string | null;
 }) {
+  // O carrinho fica salvo no navegador, por loja — assim, se o cliente
+  // sair e voltar depois (ou só atualizar a página sem querer), o que
+  // ele já tinha colocado continua lá.
+  const cartStorageKey = `mf3d-cart-${storeSlug}`;
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(cartStorageKey);
+      if (saved) setCart(JSON.parse(saved));
+    } catch {
+      // carrinho salvo corrompido ou bloqueado — só começa vazio mesmo
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (Object.keys(cart).length > 0) {
+        localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+      } else {
+        localStorage.removeItem(cartStorageKey);
+      }
+    } catch {
+      // localStorage bloqueado (modo anônimo, etc.) — carrinho segue
+      // funcionando normal, só não persiste entre visitas
+    }
+  }, [cart, cartStorageKey]);
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [openProductId, setOpenProductId] = useState<string | null>(null);
