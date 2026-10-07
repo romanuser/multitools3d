@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ReceiptView } from "@/components/receipt-view";
+import { ReceiptSwitcher } from "@/components/receipt-switcher";
 
 const STATUS_LABELS: Record<string, string> = {
   PAGAMENTO_CONFIRMADO: "Pagamento confirmado",
@@ -33,7 +33,7 @@ export default async function LojaComprovanteDetalhePage({ params }: { params: P
   return (
     <main className="min-h-screen px-6 py-10 md:px-10">
       <div className="max-w-2xl mx-auto">
-        <ReceiptView
+        <ReceiptSwitcher
           orderId={order.id}
           storeName={account?.company_name || "Sua loja"}
           customerName={order.customer_name}

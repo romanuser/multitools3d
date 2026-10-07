@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import { getAccountPlanStatus, hasFullAccess } from "@/lib/plans/access";
 import { StlPickCard } from "./stl-pick-card";
 import { STL_COVERS_BUCKET } from "@/lib/stl-packs/config";
 
@@ -12,6 +13,10 @@ export default async function StlPacksPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Exclusivo do plano VIP.
+  const { plan } = await getAccountPlanStatus(user.id);
+  if (!hasFullAccess(plan)) redirect("/dashboard/plano");
 
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);

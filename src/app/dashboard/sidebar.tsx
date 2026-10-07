@@ -110,10 +110,16 @@ export function DashboardSidebar({
     { href: "/dashboard/gerador-stl-curvo", label: "Gerador de texto STL", icon: "type" },
     { href: "/dashboard/modelador-3d", label: "Modelador 3D", icon: "cube" },
     { href: "/dashboard/foto-para-3d", label: "Foto → Modelo 3D", icon: "camera", soon: !FEATURES.photoTo3D },
-    { href: "/dashboard/stl-packs", label: "Pacote de STLs", icon: "layers" },
+    { href: "/dashboard/stl-packs", label: "Pacote de STLs", icon: "layers", locked: !hasVip },
   ];
 
-  const vipItems: NavItem[] = [{ href: "/dashboard/loja", label: "Loja virtual", icon: "store", locked: !hasVip }];
+  const vipItems: NavItem[] = [{ href: "/dashboard/loja", label: "Loja virtual", icon: "store" }];
+
+  const financeItems: NavItem[] = [
+    { href: "/dashboard/financeiro/consignados", label: "Consignados", icon: "layers" },
+    { href: "/dashboard/financeiro/receber", label: "Contas a receber", icon: "wallet" },
+    { href: "/dashboard/financeiro/pagar", label: "Contas a pagar", icon: "quote" },
+  ];
 
   const accountItems: NavItem[] = [
     { href: "/dashboard/empresa", label: "Dados da empresa", icon: "building" },
@@ -160,6 +166,7 @@ export function DashboardSidebar({
         <NavSection title="Gestão" items={manageItems} pathname={pathname} />
         <NavSection title="Criação 3D" items={createItems} pathname={pathname} />
         <NavSection title="Vendas" items={vipItems} pathname={pathname} />
+        <NavSection title="Financeiro" items={financeItems} pathname={pathname} />
 
         <div>
           <p className="px-3 text-xs text-ink-muted/80 mb-1.5">Conta</p>

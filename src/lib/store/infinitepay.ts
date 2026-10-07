@@ -59,6 +59,47 @@ export async function createStoreCheckoutLink(input: {
   return String(result.url);
 }
 
+// ---------------------------------------------------------------------
+// Link de pagamento genérico, pra cobrar qualquer valor avulso — usado
+// pelo módulo financeiro (contas a receber de consignado). Diferente do
+// checkout da loja, a confirmação de pagamento aqui é MANUAL (o lojista
+// marca como pago quando ver o dinheiro cair), sem depender de webhook.
+// ---------------------------------------------------------------------
+export async function createGenericPaymentLink(input: {
+  handle: string;
+  description: string;
+  amount: number;
+  referenceId: string;
+}) {
+  const handle = input.handle.replace(/^\$/, "").trim();
+  if (!handle) throw new Error("Configure sua InfiniteTag antes de gerar um link de cobrança.");
+
+  const body = {
+    handle,
+    order_nsu: `receivable_${input.referenceId}`,
+    items: [
+      {
+        quantity: 1,
+        price: moneyToCents(input.amount),
+        description: input.description.slice(0, 120),
+      },
+    ],
+  };
+
+  const response = await fetch(`${API_BASE}/links`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result?.url) {
+    throw new Error(result?.message || "Não foi possível criar o link de cobrança.");
+  }
+  return String(result.url);
+}
+
 async function checkPayment(input: { orderNsu: string; transactionNsu: string; slug: string; handle: string }) {
   const response = await fetch(`${API_BASE}/payment_check`, {
     method: "POST",

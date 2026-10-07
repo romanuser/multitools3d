@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ReceiptView } from "@/components/receipt-view";
+import { ReceiptSwitcher } from "@/components/receipt-switcher";
 
 const STATUS_LABELS: Record<string, string> = {
   PAGAMENTO_CONFIRMADO: "Pagamento confirmado",
@@ -35,7 +35,7 @@ export default async function ComprovanteDetalhePage({ params }: { params: Promi
 
   return (
     <div className="max-w-2xl">
-      <ReceiptView
+      <ReceiptSwitcher
         orderId={order.id}
         storeName={account?.company_name || "Loja"}
         customerName={order.customer_name}
