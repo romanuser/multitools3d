@@ -7,6 +7,9 @@ type Product = {
   print_printer_id: string | null;
   print_filament_id: string | null;
   print_weight_g: number | null;
+  available_colors: string[];
+  color_filament_material: string | null;
+  color_filament_grams: number | null;
   filament_rows?: { filament_stock_id: string; grams: number }[];
 };
 
@@ -38,9 +41,17 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function hasIncompleteRecipe(p: Product) {
+  const hasPrinter = !!p.print_printer_id;
+
+  // Produto com cor: a receita certa é material + gramagem (não o
+  // filamento específico) — mesma regra usada na lista de produtos.
+  if ((p.available_colors?.length ?? 0) > 0) {
+    const hasColorRecipe = !!(p.color_filament_material && p.color_filament_grams);
+    return (hasPrinter || hasColorRecipe) && !(hasPrinter && hasColorRecipe);
+  }
+
   const hasMulti = (p.filament_rows?.length ?? 0) > 0;
   const hasSingle = !!(p.print_filament_id && p.print_weight_g);
-  const hasPrinter = !!p.print_printer_id;
   const hasAnyFilament = hasMulti || hasSingle;
   return (hasPrinter || hasAnyFilament) && !(hasPrinter && hasAnyFilament);
 }
