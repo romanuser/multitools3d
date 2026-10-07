@@ -45,7 +45,7 @@ const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curr
 function recipeStatus(product: Product): "none" | "partial" | "complete" {
   const hasPrinter = !!product.print_printer_id;
 
-  if (product.available_colors.length > 0) {
+  if ((product.available_colors?.length ?? 0) > 0) {
     // Produto com cor: a receita é material + gramagem (a cor exata vem
     // do cliente na hora da compra).
     const hasColorRecipe = !!(product.color_filament_material && product.color_filament_grams);
@@ -142,7 +142,7 @@ export function ProductList({
                   </p>
 
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    {product.available_colors.length > 0 && (
+                    {(product.available_colors?.length ?? 0) > 0 && (
                       <span className="text-xs text-ink-muted border border-line rounded-full px-2 py-0.5">
                         {product.available_colors.length} {product.available_colors.length === 1 ? "cor" : "cores"}
                       </span>

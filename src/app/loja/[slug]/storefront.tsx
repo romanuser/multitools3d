@@ -266,9 +266,9 @@ function ProductCard({
   onOpenDetail: () => void;
 }) {
   const outOfStock = product.stock != null && product.stock <= 0;
-  const hasColors = product.available_colors.length > 0;
+  const hasColors = (product.available_colors?.length ?? 0) > 0;
 
-  const [color, setColor] = useState<string | null>(hasColors ? product.available_colors[0] : null);
+  const [color, setColor] = useState<string | null>(hasColors ? product.available_colors![0] : null);
   const [customized, setCustomized] = useState(false);
 
   return (
@@ -349,9 +349,9 @@ function ProductDetailModal({
   onClose: () => void;
 }) {
   const outOfStock = product.stock != null && product.stock <= 0;
-  const hasColors = product.available_colors.length > 0;
+  const hasColors = (product.available_colors?.length ?? 0) > 0;
 
-  const [color, setColor] = useState<string | null>(hasColors ? product.available_colors[0] : null);
+  const [color, setColor] = useState<string | null>(hasColors ? product.available_colors![0] : null);
   const [customized, setCustomized] = useState(false);
   const [added, setAdded] = useState(false);
 
