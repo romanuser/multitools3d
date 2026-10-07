@@ -11,7 +11,7 @@ const freeFeatures = [
   "Cadastro de impressoras com foto",
   "Fila de impressão com desconto automático de estoque",
   "Gerador de texto STL e Modelador 3D",
-  "Loja virtual própria, com pagamento direto na sua conta",
+  "Loja virtual própria, com cores, categorias e assistente de IA",
 ];
 
 const vipFeatures = ["Tudo do plano Free", "Pacote de STLs — arquivos novos escolhidos pra você, todo dia"];
@@ -341,11 +341,19 @@ function Features() {
           </Tile>
 
           <Tile
-            className="md:col-span-4"
+            className="md:col-span-3"
             title="Ferramentas 3D direto no navegador"
             text="Gere texto curvado pra gravar em canecas ou monte peças simples arrastando com o mouse. Exporte o STL na hora, sem instalar nada."
           >
             <ToolsMock />
+          </Tile>
+
+          <Tile
+            className="md:col-span-3"
+            title="Assistente de IA em cada loja"
+            text="Todo cliente que entra na sua loja conversa com um assistente que conhece seu catálogo, responde dúvida e adiciona produto no carrinho — sem você precisar estar online."
+          >
+            <AssistantMock />
           </Tile>
         </div>
       </div>
@@ -454,6 +462,32 @@ function PrintersMock() {
   );
 }
 
+function AssistantMock() {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex justify-end">
+        <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-amber px-3.5 py-2 text-sm text-on-accent">
+          Tem o vaso espiral em azul?
+        </div>
+      </div>
+      <div className="flex justify-start">
+        <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-line bg-paper px-3.5 py-2 text-sm text-ink">
+          Tenho sim! R$ 28,00, disponível em azul, branco e preto. Quer que eu já coloque no seu carrinho?
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-amber px-3.5 py-2 text-sm text-on-accent">
+          Pode ser!
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 pl-1 text-xs text-ink-muted">
+        <Icon name="check" size={12} className="text-good" />
+        Adicionado ao carrinho
+      </div>
+    </div>
+  );
+}
+
 function ToolsMock() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1.4fr_1fr]">
@@ -522,12 +556,16 @@ function Store() {
       text: "Sem marketplace no meio e sem repasse pra esperar.",
     },
     {
-      title: "Seu cliente acompanha o pedido",
-      text: "Ele vê o andamento e conversa com você dentro do próprio pedido.",
+      title: "Cores, personalização e categorias",
+      text: "Seu cliente escolhe a cor do produto e paga a mais por personalizar — você organiza tudo em categorias no catálogo.",
     },
     {
-      title: "Entrega combinada por WhatsApp",
-      text: "O contato do cliente chega junto com o pedido.",
+      title: "Seu cliente acompanha o pedido",
+      text: "Ele vê o andamento, troca mensagem com você e fala direto no WhatsApp, tudo dentro do próprio pedido.",
+    },
+    {
+      title: "Apareça na vitrine central",
+      text: "Seus produtos também ficam visíveis pra quem está navegando por qualquer loja da Multiferramenta 3D.",
     },
   ];
 
