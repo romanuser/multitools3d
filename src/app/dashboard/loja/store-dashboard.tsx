@@ -75,7 +75,7 @@ export function StoreDashboard({ products, orders }: { products: Product[]; orde
     day.setDate(day.getDate() - i);
     const dayStr = day.toISOString().slice(0, 10);
     const total = paidOrders
-      .filter((o) => o.created_at.slice(0, 10) === dayStr)
+      .filter((o) => typeof o.created_at === "string" && o.created_at.slice(0, 10) === dayStr)
       .reduce((sum, o) => sum + Number(o.total), 0);
     days.push({ label: day.toLocaleDateString("pt-BR", { weekday: "short" }), total });
   }
