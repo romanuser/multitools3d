@@ -1,35 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #0c1110;
-  --surface: #111917;
-  --surface-raised: #182320;
-  --ink: #e9efeb;
-  --ink-muted: #8b9b93;
-  --line: #22302a;
-  /* Verde da marca. O nome "amber" é antigo, mas foi mantido pra não
-     quebrar as telas que já usam essas classes. */
-  --amber: #2ecc71;
-  --amber-soft: #12251b;
-  --good: #2ecc71;
+  --paper: #0c0b14;
+  --surface: #161425;
+  --surface-raised: #201d36;
+  --ink: #eeedf7;
+  --ink-muted: #9b96b8;
+  --line: #2c2847;
+  /* Roxo vibrante da marca. O nome "amber" é antigo (a marca já foi
+     verde), mas foi mantido pra não quebrar as centenas de telas que já
+     usam essas classes — só o VALOR mudou. */
+  --amber: #8b5cf6;
+  --amber-soft: #241c42;
+  /* Cores extras, pra dar variedade em gráficos, selos e destaques sem
+     perder a identidade principal (roxo continua sendo o acento "oficial"
+     de botão/link). */
+  --accent-blue: #3b82f6;
+  --accent-blue-soft: #15233f;
+  --accent-pink: #ec4899;
+  --accent-pink-soft: #3a1830;
+  /* Sucesso e perigo continuam com significado próprio, sem depender do
+     roxo — verde sempre é "certo", vermelho sempre é "errado/atrasado". */
+  --good: #22c55e;
   --danger: #ef4444;
-  /* Cor do texto sobre fundo verde (botões e selos). */
-  --on-accent: #06140c;
+  /* Cor do texto sobre fundo roxo (botões e selos). */
+  --on-accent: #ffffff;
   --warn: #f5a524;
 }
 
 /* Tema claro — ativado colocando data-theme="light" na tag <html>.
    Sem esse atributo (ou com "dark"), continua no escuro de sempre. */
 :root[data-theme="light"] {
-  --paper: #f6f8f7;
+  --paper: #f7f6fb;
   --surface: #ffffff;
-  --surface-raised: #eef2f0;
-  --ink: #101a15;
-  --ink-muted: #5b6b62;
-  --line: #dde4e0;
-  --amber: #1f9d57;
-  --amber-soft: #e6f5ec;
-  --good: #1f9d57;
+  --surface-raised: #f0eef9;
+  --ink: #18152b;
+  --ink-muted: #645f85;
+  --line: #e1ddf0;
+  --amber: #7c3aed;
+  --amber-soft: #ede9fe;
+  --accent-blue: #2563eb;
+  --accent-blue-soft: #dbeafe;
+  --accent-pink: #db2777;
+  --accent-pink-soft: #fce7f3;
+  --good: #16a34a;
   --danger: #dc2626;
   --on-accent: #ffffff;
   --warn: #b3690a;
@@ -44,6 +58,10 @@
   --color-line: var(--line);
   --color-amber: var(--amber);
   --color-amber-soft: var(--amber-soft);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-blue-soft: var(--accent-blue-soft);
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-pink-soft: var(--accent-pink-soft);
   --color-good: var(--good);
   --color-danger: var(--danger);
   --color-on-accent: var(--on-accent);
