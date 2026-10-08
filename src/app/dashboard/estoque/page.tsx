@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { FilamentList } from "./filament-list";
+import { StockChart } from "./stock-chart";
 
 export default async function EstoquePage() {
   const supabase = await createClient();
@@ -21,14 +23,13 @@ export default async function EstoquePage() {
   return (
     <main className="min-h-screen px-6 py-12">
       <div className="max-w-3xl mx-auto">
-        <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
-          ← Painel
-        </Link>
+        <BackButton href="/dashboard" label="Painel" />
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Estoque de filamento</h1>
         <p className="text-sm text-ink-muted mb-8">
           Cadastre seus rolos de filamento. O saldo é descontado sozinho quando uma impressão é
           concluída na fila.
         </p>
+        <StockChart filaments={filaments ?? []} />
         <FilamentList filaments={filaments ?? []} />
       </div>
     </main>

@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PayableList } from "./payable-list";
+import { PayableChart } from "./payable-chart";
 
 export default async function PagarPage() {
   const supabase = await createClient();
@@ -24,14 +26,13 @@ export default async function PagarPage() {
   return (
     <main className="min-h-screen px-6 py-10 md:px-10">
       <div className="max-w-3xl mx-auto">
-        <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
-          ← Painel
-        </Link>
+        <BackButton href="/dashboard" label="Painel" />
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Contas a pagar</h1>
         <p className="text-sm text-ink-muted mb-8">
           Pró-labore, insumos consignados, custos mensais — você registra e marca como pago quando quitar.
         </p>
 
+        <PayableChart payables={(payables ?? []) as any} />
         <PayableList payables={(payables ?? []) as any} suppliers={suppliers ?? []} />
       </div>
     </main>

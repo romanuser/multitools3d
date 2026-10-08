@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ConsignmentList } from "./consignment-list";
+import { ConsignmentChart } from "./consignment-chart";
 
 export default async function ConsignadosPage() {
   const supabase = await createClient();
@@ -33,15 +35,14 @@ export default async function ConsignadosPage() {
   return (
     <main className="min-h-screen px-6 py-10 md:px-10">
       <div className="max-w-4xl mx-auto">
-        <Link href="/dashboard" className="text-sm text-ink-muted hover:text-ink">
-          ← Painel
-        </Link>
+        <BackButton href="/dashboard" label="Painel" />
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-4 mb-1">Consignados</h1>
         <p className="text-sm text-ink-muted mb-8">
           Produtos deixados em lojas parceiras pra revenda. A cada acerto, registre o que vendeu e o que foi
           recolhido.
         </p>
 
+        <ConsignmentChart consignments={(consignments ?? []) as any} />
         <ConsignmentList
           consignments={(consignments ?? []) as any}
           products={products ?? []}
