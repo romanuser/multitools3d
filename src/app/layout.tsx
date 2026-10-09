@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   description:
     "Orçamento, estoque de filamento, impressoras, fila de impressão e loja virtual num painel só, para quem vive de impressão 3D.",
   manifest: "/manifest.webmanifest",
-  },
+
   // "apple-mobile-web-app-capable": some navegadores antigos só leem essa
   // meta tag específica da Apple, mesmo com o manifest presente.
   other: {
