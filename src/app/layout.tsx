@@ -29,12 +29,6 @@ export const metadata: Metadata = {
   description:
     "Orçamento, estoque de filamento, impressoras, fila de impressão e loja virtual num painel só, para quem vive de impressão 3D.",
   manifest: "/manifest.webmanifest",
-  icons: {
-    icon: [
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
   },
   // "apple-mobile-web-app-capable": some navegadores antigos só leem essa
   // meta tag específica da Apple, mesmo com o manifest presente.
