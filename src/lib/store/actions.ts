@@ -61,7 +61,7 @@ export async function saveStoreSettings(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  let storeSlug = String(formData.get("storeSlug") || "")
+  const storeSlug = String(formData.get("storeSlug") || "")
     .trim()
     .toLowerCase()
     .normalize("NFD")
@@ -163,7 +163,7 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
   const active = formData.get("active") === "on";
   const photoFile = formData.get("photo") as File | null;
   const printPrinterId = String(formData.get("printPrinterId") || "") || null;
-  const printTimeMin = formData.get("printTimeMin") ? Number(formData.get("printTimeMin")) : null;
+  let printTimeMin = formData.get("printTimeMin") ? Number(formData.get("printTimeMin")) : null;
 
   const availableColorsRaw = String(formData.get("availableColors") || "")
     .split(",")
@@ -196,7 +196,46 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
       filamentRows = [];
     }
   }
+
+  // Produto multipartes: cada parte tem a própria receita (nome,
+  // filamento, gramas, tempo). Nesse caso a receita "inteira" acima
+  // fica vazia — quem manda são as partes.
+  const isMultipart = formData.get("multipart") === "on";
+  type PartInput = { name: string; filament: string; grams: string; timeMin: string };
+  let parts: { name: string; filamentStockId: string | null; colorMaterial: string | null; grams: number; timeMin: number | null }[] = [];
+  if (isMultipart) {
+    try {
+      const raw = JSON.parse(String(formData.get("partsJson") || "[]")) as PartInput[];
+      parts = raw
+        .map((r) => ({
+          name: String(r.name || "").trim(),
+          filamentStockId: r.filament?.startsWith("stock:") ? r.filament.slice(6) : null,
+          colorMaterial: r.filament?.startsWith("color:") ? r.filament.slice(6) : null,
+          grams: Number(r.grams),
+          timeMin: r.timeMin ? Number(r.timeMin) : null,
+        }))
+        .filter((r) => r.name || r.filamentStockId || r.colorMaterial || r.grams > 0);
+    } catch {
+      parts = [];
+    }
+    if (parts.length < 2) return { error: "Um produto multipartes precisa de pelo menos 2 partes." };
+    if (parts.some((p) => !p.name || !(p.grams > 0) || !(p.filamentStockId || p.colorMaterial))) {
+      return { error: "Preencha nome, filamento e gramas de todas as partes." };
+    }
+    if (!hasColors && parts.some((p) => p.colorMaterial)) {
+      return { error: "Só dá pra usar \"cor escolhida pelo cliente\" se o produto tiver cores cadastradas." };
+    }
+    filamentRows = [];
+    colorFilamentMaterial = null;
+    colorFilamentGrams = null;
+  }
+
   const isSingleFilament = filamentRows.length === 1;
+  // Multipartes: o tempo do produto é a soma das partes (usado no prazo
+  // de produção que a loja mostra pro cliente).
+  if (isMultipart) {
+    printTimeMin = parts.every((p) => p.timeMin) ? parts.reduce((sum, p) => sum + (p.timeMin || 0), 0) : null;
+  }
   const printFilamentId = isSingleFilament ? filamentRows[0].filamentStockId : null;
   const printWeightG = isSingleFilament ? filamentRows[0].grams : null;
   const shippingWeight = formData.get("shippingWeight") ? Number(formData.get("shippingWeight")) : null;
@@ -314,6 +353,23 @@ export async function saveProduct(_prevState: ProductState, formData: FormData):
         grams: r.grams,
       }))
     );
+  }
+
+  // Partes do produto multipartes: mesma ideia — limpa e recria.
+  await supabase.from("product_parts").delete().eq("product_id", savedProduct.id);
+  if (isMultipart) {
+    const { error: partsError } = await supabase.from("product_parts").insert(
+      parts.map((p, i) => ({
+        product_id: savedProduct.id,
+        position: i,
+        name: p.name,
+        filament_stock_id: p.filamentStockId,
+        color_material: p.colorMaterial,
+        grams: p.grams,
+        print_time_min: p.timeMin,
+      }))
+    );
+    if (partsError) return { error: "Produto salvo, mas não consegui salvar as partes: " + partsError.message };
   }
 
   revalidatePath("/dashboard/loja");

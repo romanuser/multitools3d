@@ -11,6 +11,7 @@ type Product = {
   color_filament_material: string | null;
   color_filament_grams: number | null;
   filament_rows?: { filament_stock_id: string; grams: number }[];
+  parts?: { filament_stock_id: string | null; color_material: string | null; grams: number | null }[];
 };
 
 type Order = {
@@ -42,6 +43,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 function hasIncompleteRecipe(p: Product) {
   const hasPrinter = !!p.print_printer_id;
+
+  // Multipartes: precisa de impressora e de todas as partes completas.
+  if ((p.parts?.length ?? 0) > 0) {
+    const partsOk = p.parts!.every((part) => (part.filament_stock_id || part.color_material) && part.grams);
+    return !(hasPrinter && partsOk);
+  }
 
   // Produto com cor: a receita certa é material + gramagem (não o
   // filamento específico) — mesma regra usada na lista de produtos.

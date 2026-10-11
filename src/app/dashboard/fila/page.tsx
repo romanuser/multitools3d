@@ -40,9 +40,43 @@ export default async function FilaPage() {
     filamentsByJob.set(row.job_id, list);
   }
 
+  // Produtos multipartes — cada parte é impressa separada, mas o produto
+  // aparece como um card só na fila.
+  const { data: jobParts } = jobIds.length
+    ? await supabase
+        .from("print_job_parts")
+        .select(
+          "id, job_id, position, name, filament_stock_id, planned_grams, actual_grams, estimated_time_min, status, started_at, cost_snapshot, failure_count"
+        )
+        .in("job_id", jobIds)
+        .order("position", { ascending: true })
+    : { data: [] };
+
+  type JobPartRow = {
+    id: string;
+    job_id: string;
+    position: number;
+    name: string;
+    filament_stock_id: string | null;
+    planned_grams: number | null;
+    actual_grams: number | null;
+    estimated_time_min: number | null;
+    status: string;
+    started_at: string | null;
+    cost_snapshot: number | null;
+    failure_count: number;
+  };
+  const partsByJob = new Map<string, JobPartRow[]>();
+  for (const part of (jobParts ?? []) as JobPartRow[]) {
+    const list = partsByJob.get(part.job_id) ?? [];
+    list.push(part);
+    partsByJob.set(part.job_id, list);
+  }
+
   const jobsWithFilaments = (jobs ?? []).map((job) => ({
     ...job,
     filaments: filamentsByJob.get(job.id) ?? [],
+    parts: partsByJob.get(job.id) ?? [],
   }));
 
   return (

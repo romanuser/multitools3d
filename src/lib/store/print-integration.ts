@@ -48,9 +48,34 @@ export async function createPrintJobsForOrder(
     multiByProduct.set(row.product_id, list);
   }
 
+  // Produtos multipartes — cada parte vira uma parte da impressão na fila.
+  const { data: partRows } = await client
+    .from("product_parts")
+    .select("product_id, position, name, filament_stock_id, color_material, grams, print_time_min")
+    .in("product_id", productIds)
+    .order("position", { ascending: true });
+
+  type ProductPart = {
+    product_id: string;
+    position: number;
+    name: string;
+    filament_stock_id: string | null;
+    color_material: string | null;
+    grams: number | null;
+    print_time_min: number | null;
+  };
+  const partsByProduct = new Map<string, ProductPart[]>();
+  for (const row of (partRows ?? []) as ProductPart[]) {
+    const list = partsByProduct.get(row.product_id) ?? [];
+    list.push(row);
+    partsByProduct.set(row.product_id, list);
+  }
+
   // Precisa do estoque de filamento inteiro da loja só quando tiver pelo
-  // menos um produto com receita "por cor" entre os itens do pedido.
-  const needsColorLookup = products.some((p) => p.color_filament_material && p.color_filament_grams);
+  // menos um produto (ou parte) com receita "por cor" entre os itens.
+  const needsColorLookup =
+    products.some((p) => p.color_filament_material && p.color_filament_grams) ||
+    [...partsByProduct.values()].some((list) => list.some((part) => part.color_material));
   let filamentStock: { id: string; material: string; color: string }[] = [];
   if (needsColorLookup) {
     const { data } = await client.from("filament_stock").select("id, material, color").eq("account_id", accountId);
@@ -67,6 +92,56 @@ export async function createPrintJobsForOrder(
     if (!product) continue;
 
     const quantity = Math.max(1, item.quantity || 1);
+
+    // --- Produto multipartes: um card na fila com as partes dentro ---
+    const parts = partsByProduct.get(product.id) ?? [];
+    if (parts.length) {
+      if (!product.print_printer_id) continue;
+
+      // Parte "cor do cliente": resolve o rolo pela cor escolhida. Se não
+      // achar, a parte entra sem filamento e o lojista escolhe na fila.
+      const resolvedParts = parts.map((part) => ({
+        ...part,
+        filament_stock_id: part.color_material
+          ? item.color
+            ? (findColorFilament(part.color_material, item.color)?.id ?? null)
+            : null
+          : part.filament_stock_id,
+      }));
+      const totalTime = parts.every((p) => p.print_time_min)
+        ? parts.reduce((sum, p) => sum + (p.print_time_min || 0), 0)
+        : product.print_time_min || null;
+
+      for (let i = 0; i < quantity; i++) {
+        const { data: job, error } = await client
+          .from("print_jobs")
+          .insert({
+            account_id: accountId,
+            name: item.color ? `${product.name} (${item.color})` : product.name,
+            printer_id: product.print_printer_id,
+            filament_stock_id: null,
+            planned_grams: null,
+            estimated_time_min: totalTime,
+            status: "fila",
+          })
+          .select("id")
+          .single();
+        if (error || !job) continue;
+
+        await client.from("print_job_parts").insert(
+          resolvedParts.map((part, position) => ({
+            job_id: job.id,
+            position,
+            name: part.name,
+            filament_stock_id: part.filament_stock_id,
+            planned_grams: part.grams,
+            estimated_time_min: part.print_time_min,
+          }))
+        );
+      }
+      continue;
+    }
+
     const usesColorRecipe = !!(product.color_filament_material && product.color_filament_grams);
 
     // --- Produto com cor: resolve o filamento exato pela escolha do cliente ---

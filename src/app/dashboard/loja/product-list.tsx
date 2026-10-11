@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { saveProduct, deleteProduct, reorderProduct } from "@/lib/store/actions";
 import { FilamentRowsPicker } from "@/components/filament-rows-picker";
+import { PartsEditor } from "@/components/parts-editor";
 import { FieldTooltip } from "@/components/field-tooltip";
 import { Icon } from "@/components/icons";
 
@@ -30,6 +31,16 @@ type Product = {
   color_filament_grams: number | null;
   display_order: number;
   filament_rows?: { filament_stock_id: string; grams: number }[];
+  parts?: ProductPart[];
+};
+
+type ProductPart = {
+  position: number;
+  name: string;
+  filament_stock_id: string | null;
+  color_material: string | null;
+  grams: number | null;
+  print_time_min: number | null;
 };
 
 const PRESET_CATEGORIES = ["Decorações", "Automotivo", "Presentes", "Para empresas", "Para eventos"];
@@ -44,6 +55,12 @@ const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curr
 // — o produto não vai gerar peça sozinho na fila quando alguém comprar.
 function recipeStatus(product: Product): "none" | "partial" | "complete" {
   const hasPrinter = !!product.print_printer_id;
+
+  // Multipartes: cada parte precisa de filamento (ou cor do cliente) e gramas.
+  if ((product.parts?.length ?? 0) > 0) {
+    const partsOk = product.parts!.every((p) => (p.filament_stock_id || p.color_material) && p.grams);
+    return hasPrinter && partsOk ? "complete" : "partial";
+  }
 
   if ((product.available_colors?.length ?? 0) > 0) {
     // Produto com cor: a receita é material + gramagem (a cor exata vem
@@ -152,13 +169,23 @@ export function ProductList({
                         personalizável
                       </span>
                     )}
+                    {(product.parts?.length ?? 0) > 0 && (
+                      <span className="text-xs text-amber border border-amber/40 rounded-full px-2 py-0.5">
+                        {product.parts!.length} partes
+                      </span>
+                    )}
                   </div>
 
                   {recipe === "partial" && (
                     <p className="flex items-start gap-1.5 text-xs text-warn mt-3 rounded-lg border border-warn/30 bg-warn/10 px-2.5 py-2">
                       <span className="shrink-0">⚠</span>
                       Receita de impressão incompleta — falta{" "}
-                      {!product.print_printer_id ? "a impressora" : "o filamento/peso"}. Essa peça não entra na fila
+                      {!product.print_printer_id
+                        ? "a impressora"
+                        : (product.parts?.length ?? 0) > 0
+                          ? "filamento ou peso em alguma parte"
+                          : "o filamento/peso"}
+                      . Essa peça não entra na fila
                       sozinha quando alguém comprar.
                     </p>
                   )}
@@ -284,6 +311,7 @@ function ProductForm({
   const [customizable, setCustomizable] = useState(product?.customizable ?? false);
   const [colorsText, setColorsText] = useState(product?.available_colors?.join(", ") ?? "");
   const hasColors = colorsText.trim().length > 0;
+  const [multipart, setMultipart] = useState((product?.parts?.length ?? 0) > 0);
 
   if (state !== undefined && !state.error && !pending) {
     queueMicrotask(onDone);
@@ -430,8 +458,48 @@ function ProductForm({
               ))}
             </select>
           </label>
+          <label className="sm:col-span-2 flex items-start gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              name="multipart"
+              checked={multipart}
+              onChange={(e) => setMultipart(e.target.checked)}
+              className="accent-amber mt-0.5"
+            />
+            <span>
+              Produto em várias partes (multipartes)
+              <span className="block text-xs text-ink-muted">
+                Cada parte é impressa separada, uma de cada vez, com peso e tempo próprios. Na fila o produto aparece
+                como um card só e fica pronto quando todas as partes forem concluídas.
+              </span>
+            </span>
+          </label>
           <div className="sm:col-span-2">
-            {hasColors ? (
+            {multipart ? (
+              <>
+                <span className="block text-sm text-ink-muted mb-1">
+                  Partes (filamento · gramas · minutos)
+                  <FieldTooltip>
+                    Uma linha por parte impressa separadamente. Se o produto tiver cores, cada parte pode usar a cor
+                    escolhida pelo cliente (dentro de um material) ou um rolo fixo — ex: base sempre preta e topo na
+                    cor do cliente. O tempo do produto vira a soma das partes.
+                  </FieldTooltip>
+                </span>
+                <PartsEditor
+                  name="partsJson"
+                  filamentOptions={filaments.map((f) => ({ value: `stock:${f.id}`, label: f.label }))}
+                  colorOptions={
+                    hasColors ? materials.map((m) => ({ value: `color:${m}`, label: `${m} · cor do cliente` })) : []
+                  }
+                  initialRows={product?.parts?.map((p) => ({
+                    name: p.name,
+                    filament: p.color_material ? `color:${p.color_material}` : p.filament_stock_id ? `stock:${p.filament_stock_id}` : "",
+                    grams: p.grams != null ? String(p.grams) : "",
+                    timeMin: p.print_time_min != null ? String(p.print_time_min) : "",
+                  }))}
+                />
+              </>
+            ) : hasColors ? (
               <>
                 <span className="block text-sm text-ink-muted mb-1">
                   Filamento da cor escolhida pelo cliente
@@ -496,6 +564,7 @@ function ProductForm({
               </>
             )}
           </div>
+          {!multipart && (
           <label className="block">
             <span className="block text-sm text-ink-muted mb-1">
               Tempo estimado (min, opcional)
@@ -512,6 +581,7 @@ function ProductForm({
               className="input font-spec"
             />
           </label>
+          )}
         </div>
       </div>
 

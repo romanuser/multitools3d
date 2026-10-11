@@ -48,9 +48,34 @@ export default async function LojaPage() {
     list.push(row);
     filamentRowsByProduct.set(row.product_id, list);
   }
+  // Partes dos produtos multipartes.
+  type ProductPartRow = {
+    product_id: string;
+    position: number;
+    name: string;
+    filament_stock_id: string | null;
+    color_material: string | null;
+    grams: number | null;
+    print_time_min: number | null;
+  };
+  const { data: productPartRows } = productIds.length
+    ? await supabase
+        .from("product_parts")
+        .select("product_id, position, name, filament_stock_id, color_material, grams, print_time_min")
+        .in("product_id", productIds)
+        .order("position", { ascending: true })
+    : { data: [] };
+  const partsByProduct = new Map<string, ProductPartRow[]>();
+  for (const row of (productPartRows ?? []) as ProductPartRow[]) {
+    const list = partsByProduct.get(row.product_id) ?? [];
+    list.push(row);
+    partsByProduct.set(row.product_id, list);
+  }
+
   const productsWithFilaments = (products ?? []).map((p) => ({
     ...p,
     filament_rows: filamentRowsByProduct.get(p.id) ?? [],
+    parts: partsByProduct.get(p.id) ?? [],
   }));
 
   const [{ data: printers }, { data: filaments }] = await Promise.all([
