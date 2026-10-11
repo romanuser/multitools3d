@@ -240,20 +240,41 @@ export async function settleConsignment(
 // ===========================================================================
 // CONTAS A RECEBER
 // ===========================================================================
+// Baixa manual: "amountNow" é o valor recebido AGORA e "method" a forma
+// que o lojista escolheu (Pix, dinheiro, cartão…). Vira um recebimento e
+// soma no que já tinha sido pago (entrada, parcelas, link).
 export async function markReceivablePaid(
   id: string,
-  paidAmount: number
+  amountNow: number,
+  method: string = "outro"
 ): Promise<{ error?: string }> {
   const { supabase, userId } = await requireUser();
   const { data: row } = await supabase
     .from("accounts_receivable")
-    .select("total_amount")
+    .select("total_amount, paid_amount, status")
     .eq("id", id)
     .eq("account_id", userId)
     .maybeSingle();
   if (!row) return { error: "Não encontrado." };
+  if (row.status === "pago") return { error: "Essa conta já está paga." };
+  if (!(amountNow > 0)) return { error: "Informe o valor recebido." };
+  if (!["pix", "dinheiro", "debito", "credito", "outro"].includes(method)) return { error: "Escolha a forma de pagamento." };
 
-  const status = paidAmount >= Number(row.total_amount) ? "pago" : "parcial";
+  const total = Number(row.total_amount);
+  const remaining = Math.round((total - Number(row.paid_amount || 0)) * 100) / 100;
+  const amount = Math.min(remaining, Math.round(amountNow * 100) / 100);
+
+  const { error: payError } = await supabase.from("receivable_payments").insert({
+    receivable_id: id,
+    account_id: userId,
+    amount,
+    method,
+    source: "manual",
+  });
+  if (payError) return { error: payError.message };
+
+  const paidAmount = Math.min(total, Math.round((Number(row.paid_amount || 0) + amount) * 100) / 100);
+  const status = paidAmount >= total ? "pago" : "parcial";
   const { error } = await supabase
     .from("accounts_receivable")
     .update({ paid_amount: paidAmount, status, settled_at: status === "pago" ? new Date().toISOString() : null })
@@ -262,7 +283,48 @@ export async function markReceivablePaid(
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/financeiro/receber");
+  revalidatePath("/dashboard/comprovantes");
+  revalidatePath("/dashboard/painel");
   return {};
+}
+
+// Gera (ou refaz) o link de cobrança InfinitePay do saldo em aberto. O
+// link avisa o webhook: quando o cliente paga, a conta recebe baixa
+// sozinha. "Refazer" serve pra quando o saldo mudou (pagou uma parte por
+// fora) ou o link é antigo, de antes da baixa automática.
+export async function generateReceivableLink(id: string): Promise<{ error?: string; url?: string }> {
+  const { supabase, userId } = await requireUser();
+  const [{ data: row }, { data: account }] = await Promise.all([
+    supabase
+      .from("accounts_receivable")
+      .select("id, description, total_amount, paid_amount, status")
+      .eq("id", id)
+      .eq("account_id", userId)
+      .maybeSingle(),
+    supabase.from("accounts").select("infinitepay_handle").eq("id", userId).maybeSingle(),
+  ]);
+  if (!row) return { error: "Não encontrado." };
+  if (row.status === "pago" || row.status === "baixado_sem_pagar") return { error: "Essa conta já foi quitada." };
+  if (!account?.infinitepay_handle) {
+    return { error: "Cadastre sua InfiniteTag na Loja virtual pra gerar links de cobrança." };
+  }
+
+  const remaining = Math.round((Number(row.total_amount) - Number(row.paid_amount || 0)) * 100) / 100;
+  if (!(remaining > 0)) return { error: "Não há saldo em aberto." };
+
+  try {
+    const url = await createGenericPaymentLink({
+      handle: account.infinitepay_handle,
+      description: row.description,
+      amount: remaining,
+      referenceId: row.id,
+    });
+    await supabase.from("accounts_receivable").update({ payment_link_url: url }).eq("id", row.id).eq("account_id", userId);
+    revalidatePath("/dashboard/financeiro/receber");
+    return { url };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Não consegui gerar o link agora." };
+  }
 }
 
 // ===========================================================================
@@ -301,17 +363,22 @@ export async function savePayable(
   return { success: true };
 }
 
-export async function markPayablePaid(id: string, paidAmount: number): Promise<{ error?: string }> {
+// Mesmo ajuste de Contas a receber: "amountNow" é o valor pago AGORA e
+// soma no que já tinha sido pago.
+export async function markPayablePaid(id: string, amountNow: number): Promise<{ error?: string }> {
   const { supabase, userId } = await requireUser();
   const { data: row } = await supabase
     .from("accounts_payable")
-    .select("total_amount")
+    .select("total_amount, paid_amount")
     .eq("id", id)
     .eq("account_id", userId)
     .maybeSingle();
   if (!row) return { error: "Não encontrado." };
+  if (!(amountNow > 0)) return { error: "Informe o valor pago." };
 
-  const status = paidAmount >= Number(row.total_amount) ? "pago" : "parcial";
+  const total = Number(row.total_amount);
+  const paidAmount = Math.min(total, Math.round((Number(row.paid_amount || 0) + amountNow) * 100) / 100);
+  const status = paidAmount >= total ? "pago" : "parcial";
   const { error } = await supabase
     .from("accounts_payable")
     .update({ paid_amount: paidAmount, status, settled_at: status === "pago" ? new Date().toISOString() : null })
@@ -320,6 +387,7 @@ export async function markPayablePaid(id: string, paidAmount: number): Promise<{
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/financeiro/pagar");
+  revalidatePath("/dashboard/painel");
   return {};
 }
 

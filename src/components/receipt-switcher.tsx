@@ -28,6 +28,18 @@ export function ReceiptSwitcher({
   isPickup,
   paymentTransactionNsu,
   paymentInvoiceSlug,
+  number,
+  statusLabel,
+  extraLines,
+  customerPhone,
+  customerDocument,
+  notes,
+  hideBack,
+  thermalTitle = "Comprovante de venda",
+  thermalFooter,
+  totalLabel,
+  balanceDue,
+  paymentLines,
 }: {
   orderId: string;
   storeName: string;
@@ -44,6 +56,18 @@ export function ReceiptSwitcher({
   isPickup?: boolean | null;
   paymentTransactionNsu?: string | null;
   paymentInvoiceSlug?: string | null;
+  number?: string;
+  statusLabel?: string;
+  extraLines?: { label: string; value: number }[];
+  customerPhone?: string | null;
+  customerDocument?: string | null;
+  notes?: string | null;
+  hideBack?: boolean;
+  thermalTitle?: string;
+  thermalFooter?: string;
+  totalLabel?: string;
+  balanceDue?: number;
+  paymentLines?: string[];
 }) {
   const [format, setFormat] = useState<"bonito" | "cupom">(() => {
     if (typeof window === "undefined") return "bonito";
@@ -64,6 +88,7 @@ export function ReceiptSwitcher({
     qty: item.quantity,
     value: item.total ?? (item.unitPrice ? item.unitPrice * item.quantity : undefined),
   }));
+  for (const line of extraLines ?? []) thermalLines.push({ label: line.label, value: line.value });
   if (shippingLabel) thermalLines.push({ label: `Frete · ${shippingLabel}`, value: shippingPrice || 0 });
 
   return (
@@ -106,15 +131,28 @@ export function ReceiptSwitcher({
           isPickup={isPickup}
           paymentTransactionNsu={paymentTransactionNsu}
           paymentInvoiceSlug={paymentInvoiceSlug}
+          number={number}
+          statusLabel={statusLabel}
+          extraLines={extraLines}
+          customerPhone={customerPhone}
+          customerDocument={customerDocument}
+          notes={notes}
+          hideBack={hideBack}
+          totalLabel={totalLabel}
+          balanceDue={balanceDue}
+          paymentLines={paymentLines}
         />
       ) : (
         <ThermalReceipt
           storeName={storeName}
-          title="Comprovante de venda"
-          reference={customerName || customerEmail || undefined}
-          date={new Date(createdAt).toLocaleDateString("pt-BR")}
+          title={number ? `${thermalTitle} ${number}` : thermalTitle}
+          reference={[customerName || customerEmail, statusLabel && status ? `${statusLabel}: ${status}` : null]
+            .filter(Boolean)
+            .join(" · ") || undefined}
+          date={new Date(createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
           lines={thermalLines}
           total={total}
+          footerNote={thermalFooter}
         />
       )}
     </div>

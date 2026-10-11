@@ -31,6 +31,7 @@ export default async function PainelGeralPage() {
     productsData,
     receivableData,
     payableData,
+    directSalesData,
   ] = await Promise.all([
     supabase
       .from("printers")
@@ -69,11 +70,26 @@ export default async function PainelGeralPage() {
           .select("id, total_amount, paid_amount, due_date, status, settled_at")
           .eq("account_id", user.id)
       : Promise.resolve({ data: null }),
+    showStore
+      ? supabase
+          .from("direct_sales")
+          .select("id, items, total, created_at")
+          .eq("account_id", user.id)
+          // fiado e link de cobrança entram quando forem quitados, via Contas a receber
+          .not("payment_method", "in", "(a_receber,link)")
+          .gte("created_at", thirtyDaysAgo.toISOString())
+      : Promise.resolve({ data: null }),
   ]);
 
   let storeStats = null;
   if (showStore) {
-    const orders = storeOrdersData.data ?? [];
+    // Venda direta já nasce paga — entra no faturamento junto com os
+    // pedidos pagos da loja (vendas do dia, semana, mais vendidos, lucro).
+    const directSales = (directSalesData.data ?? []).map((sale) => ({
+      ...sale,
+      status: "PAGAMENTO_CONFIRMADO",
+    }));
+    const orders = [...(storeOrdersData.data ?? []), ...directSales];
     const products = productsData.data ?? [];
     const receivables = receivableData.data ?? [];
     const payables = payableData.data ?? [];

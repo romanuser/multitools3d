@@ -49,7 +49,9 @@ export function ThermalReceipt({
               {line.qty != null ? `${line.qty}x ` : ""}
               {line.label}
             </span>
-            {line.value != null && <span className="shrink-0">{money(line.value)}</span>}
+            {line.value != null && (
+              <span className="shrink-0">{line.value < 0 ? `-${money(-line.value)}` : money(line.value)}</span>
+            )}
           </div>
         ))}
 
@@ -62,7 +64,9 @@ export function ThermalReceipt({
 
         <div className="border-t border-dashed border-black my-2" />
 
-        <p className="text-center text-[11px] mt-2">{footerNote || "Comprovante interno — guarde para seu controle"}</p>
+        <p className="text-center text-[11px] mt-2 whitespace-pre-line">
+          {footerNote || "Comprovante interno — guarde para seu controle"}
+        </p>
         <p className="text-center text-[10px] mt-3 tracking-widest">* * *</p>
       </div>
     </div>

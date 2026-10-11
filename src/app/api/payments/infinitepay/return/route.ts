@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { confirmPlanPurchase, getSiteUrl } from "@/lib/plans/infinitepay";
-import { confirmStoreOrder } from "@/lib/store/infinitepay";
+import { confirmReceivablePayment, confirmStoreOrder } from "@/lib/store/infinitepay";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------
 // Pra onde a InfinitePay manda o usuário de volta depois de pagar (ou
@@ -24,6 +25,37 @@ export async function GET(request: NextRequest) {
       } else {
         destination.searchParams.set("pagamento", "incompleto");
       }
+      return NextResponse.redirect(destination);
+    }
+
+    if (orderNsu.startsWith("receivable_")) {
+      // Cliente pagou uma cobrança: confirma na hora e manda pro recibo
+      // da venda (se a cobrança veio de uma venda fiado).
+      const receivableId = orderNsu.replace(/^receivable_/, "");
+      let paid = false;
+      if (receivableId && transactionNsu && slug) {
+        paid = (
+          await confirmReceivablePayment({
+            receivableId,
+            transactionNsu,
+            slug,
+            captureMethod: params.get("capture_method"),
+            installments: Number(params.get("installments") || 0) || null,
+            receiptUrl: params.get("receipt_url"),
+          })
+        ).paid;
+      }
+      const admin = createAdminClient();
+      const { data: receivable } = await admin
+        .from("accounts_receivable")
+        .select("direct_sale_id")
+        .eq("id", receivableId)
+        .maybeSingle();
+      const { data: sale } = receivable?.direct_sale_id
+        ? await admin.from("direct_sales").select("public_token").eq("id", receivable.direct_sale_id).maybeSingle()
+        : { data: null };
+      const destination = new URL(sale ? `/comprovante/${sale.public_token}` : "/", getSiteUrl());
+      destination.searchParams.set("pagamento", paid ? "confirmado" : "pendente");
       return NextResponse.redirect(destination);
     }
 

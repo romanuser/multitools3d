@@ -4,7 +4,10 @@ import { useActionState, useState } from "react";
 import { createConsignment, settleConsignment } from "@/lib/finance/actions";
 
 const money = (v: number) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const dateFmt = (d: string) => new Date(d).toLocaleDateString("pt-BR");
+// Data pura ("2026-11-10") vira meio-dia local — sem isso, no fuso do
+// Brasil (UTC-3) a data aparecia um dia antes.
+const dateFmt = (d: string) =>
+  new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T12:00:00` : d).toLocaleDateString("pt-BR");
 
 type Product = { id: string; name: string; price: number; image_url: string | null };
 type Settlement = {

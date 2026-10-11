@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { createQuoteRecord } from "@/lib/quotes/actions";
 import type { QuotePattern } from "@/lib/quotes/types";
+import { calcPrice } from "@/lib/quotes/calc";
 
 const money = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -64,11 +65,13 @@ export function QuoteCalculator({
     const fixed = Math.max(0, toNumber(fixedCosts));
     const marg = Math.max(0, toNumber(margin));
 
-    const filament = (fp * g) / 1000;
-    const energy = (w / 1000) * h * kwh;
-    const production = filament + energy + lab + fixed;
-    const profit = (production * marg) / 100;
-    return { filament, energy, production, profit, suggested: production + profit };
+    return calcPrice((fp * g) / 1000, h, {
+      watts: w,
+      kwhPrice: kwh,
+      labor: lab,
+      fixedCosts: fixed,
+      marginPercent: marg,
+    });
   }, [filamentPrice, grams, watts, hours, kwhPrice, labor, fixedCosts, margin]);
 
   const total = result.suggested * Math.max(1, toNumber(quantity));

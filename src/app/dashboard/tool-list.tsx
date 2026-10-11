@@ -77,6 +77,18 @@ export const createTools: Tool[] = [
 
 export const salesTools: Tool[] = [
   {
+    title: "Venda direta",
+    description: "Registre vendas do balcão e do WhatsApp: entra no faturamento e vai pra fila.",
+    href: "/dashboard/vendas",
+    icon: "cart",
+  },
+  {
+    title: "Comprovantes",
+    description: "Recibos e cupons de todas as vendas, prontos pra mandar no WhatsApp.",
+    href: "/dashboard/comprovantes",
+    icon: "receipt",
+  },
+  {
     title: "Loja virtual",
     description: "Venda com o seu próprio link e receba direto na sua conta.",
     href: "/dashboard/loja",

@@ -118,7 +118,7 @@ export default async function LojaPage() {
         </Link>
         <div className="flex items-center justify-between mt-4 mb-1">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Loja virtual</h1>
-          <Link href="/dashboard/loja/comprovantes" className="text-sm text-amber hover:underline">
+          <Link href="/dashboard/comprovantes" className="text-sm text-amber hover:underline">
             Comprovantes →
           </Link>
         </div>

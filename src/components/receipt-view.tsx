@@ -35,6 +35,16 @@ export function ReceiptView({
   isPickup,
   paymentTransactionNsu,
   paymentInvoiceSlug,
+  number,
+  statusLabel = "Status do pedido",
+  extraLines = [],
+  customerPhone,
+  customerDocument,
+  notes,
+  hideBack,
+  totalLabel = "Total pago",
+  balanceDue,
+  paymentLines = [],
 }: {
   orderId: string;
   storeName: string;
@@ -51,14 +61,27 @@ export function ReceiptView({
   isPickup?: boolean | null;
   paymentTransactionNsu?: string | null;
   paymentInvoiceSlug?: string | null;
+  // Usados pela venda direta (todos opcionais — a loja não usa)
+  number?: string;
+  statusLabel?: string;
+  extraLines?: { label: string; value: number }[];
+  customerPhone?: string | null;
+  customerDocument?: string | null;
+  notes?: string | null;
+  hideBack?: boolean;
+  totalLabel?: string;
+  balanceDue?: number;
+  paymentLines?: string[];
 }) {
   const deliveryEstimate = formatDeliveryEstimate(productionMinutes || 0, shippingDays ?? null, !!isPickup);
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 print:hidden">
-        <button onClick={() => window.history.back()} className="text-sm text-ink-muted hover:text-ink">
-          ← Voltar
-        </button>
+      <div className={`flex items-center mb-6 print:hidden ${hideBack ? "justify-end" : "justify-between"}`}>
+        {!hideBack && (
+          <button onClick={() => window.history.back()} className="text-sm text-ink-muted hover:text-ink">
+            ← Voltar
+          </button>
+        )}
         <button
           onClick={() => window.print()}
           className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink hover:bg-surface-raised transition-colors"
@@ -76,7 +99,7 @@ export function ReceiptView({
           </div>
           <div className="text-right">
             <p className="text-xs text-ink-muted">Comprovante</p>
-            <p className="font-spec text-ink">#{receiptNumber(orderId)}</p>
+            <p className="font-spec text-ink">{number ?? `#${receiptNumber(orderId)}`}</p>
             <p className="text-xs text-ink-muted mt-1">{new Date(createdAt).toLocaleDateString("pt-BR")}</p>
           </div>
         </div>
@@ -85,10 +108,12 @@ export function ReceiptView({
           <div>
             <p className="text-xs text-ink-muted mb-1">Cliente</p>
             <p className="text-ink">{customerName || "—"}</p>
+            {customerDocument && <p className="text-ink-muted">{customerDocument}</p>}
+            {customerPhone && <p className="text-ink-muted">{customerPhone}</p>}
             {customerEmail && <p className="text-ink-muted">{customerEmail}</p>}
           </div>
           <div className="sm:text-right">
-            <p className="text-xs text-ink-muted mb-1">Status do pedido</p>
+            <p className="text-xs text-ink-muted mb-1">{statusLabel}</p>
             <p className="text-ink">{status}</p>
           </div>
         </div>
@@ -117,6 +142,16 @@ export function ReceiptView({
                 </td>
               </tr>
             ))}
+            {extraLines.map((line, i) => (
+              <tr key={`extra-${i}`}>
+                <td className="py-2.5 text-ink-muted" colSpan={2}>
+                  {line.label}
+                </td>
+                <td className="py-2.5 text-right font-spec text-ink">
+                  {line.value < 0 ? `− ${money(-line.value)}` : money(line.value)}
+                </td>
+              </tr>
+            ))}
             {shippingLabel && (
               <tr>
                 <td className="py-2.5 text-ink-muted" colSpan={2}>
@@ -128,12 +163,36 @@ export function ReceiptView({
           </tbody>
         </table>
 
-        <div className="flex justify-end mb-6">
+        <div className="flex flex-col items-end gap-1 mb-6">
           <div className="flex items-baseline gap-3">
-            <span className="text-sm text-ink-muted">Total pago</span>
+            <span className="text-sm text-ink-muted">{totalLabel}</span>
             <span className="font-spec text-xl text-amber font-medium">{money(total)}</span>
           </div>
+          {balanceDue != null && balanceDue > 0 && (
+            <div className="flex items-baseline gap-3">
+              <span className="text-sm text-ink-muted">Saldo a pagar</span>
+              <span className="font-spec text-danger font-medium">{money(balanceDue)}</span>
+            </div>
+          )}
         </div>
+
+        {paymentLines.length > 0 && (
+          <div className="pt-4 border-t border-line text-sm mb-4">
+            <p className="text-xs text-ink-muted mb-1">Recebimentos</p>
+            {paymentLines.map((line, i) => (
+              <p key={i} className="text-ink font-spec text-xs">
+                {line}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {notes && (
+          <div className="pt-4 border-t border-line text-sm mb-4">
+            <p className="text-xs text-ink-muted mb-1">Observações</p>
+            <p className="text-ink whitespace-pre-line">{notes}</p>
+          </div>
+        )}
 
         {(paymentTransactionNsu || paymentInvoiceSlug) && (
           <div className="pt-4 border-t border-line text-xs text-ink-muted space-y-0.5">

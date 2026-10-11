@@ -1,0 +1,40 @@
+// ---------------------------------------------------------------------
+// O cálculo de preço da calculadora de orçamento, num lugar só — usado
+// pelo Orçamento e pela Venda direta, pra os dois darem sempre o mesmo
+// resultado.
+//
+//   filamento + energia + mão de obra + custos fixos = custo de produção
+//   custo de produção × margem                       = lucro
+//   custo de produção + lucro                        = preço sugerido
+// ---------------------------------------------------------------------
+export type PriceParams = {
+  watts: number;
+  kwhPrice: number;
+  labor: number;
+  fixedCosts: number;
+  marginPercent: number;
+};
+
+export const DEFAULT_PRICE_PARAMS: PriceParams = {
+  watts: 200,
+  kwhPrice: 0.8,
+  labor: 15,
+  fixedCosts: 0,
+  marginPercent: 30,
+};
+
+export type PriceResult = {
+  filament: number;
+  energy: number;
+  production: number;
+  profit: number;
+  suggested: number;
+};
+
+export function calcPrice(filamentCost: number, hours: number, params: PriceParams): PriceResult {
+  const filament = Math.max(0, filamentCost);
+  const energy = (Math.max(0, params.watts) / 1000) * Math.max(0, hours) * Math.max(0, params.kwhPrice);
+  const production = filament + energy + Math.max(0, params.labor) + Math.max(0, params.fixedCosts);
+  const profit = (production * Math.max(0, params.marginPercent)) / 100;
+  return { filament, energy, production, profit, suggested: production + profit };
+}

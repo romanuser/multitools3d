@@ -5,7 +5,10 @@ import { savePayable, markPayablePaid, deletePayable, saveSupplier, deleteSuppli
 import { ThermalReceipt } from "@/components/thermal-receipt";
 
 const money = (v: number) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const dateFmt = (d: string) => new Date(d).toLocaleDateString("pt-BR");
+// Data pura ("2026-11-10") vira meio-dia local — sem isso, no fuso do
+// Brasil (UTC-3) a data aparecia um dia antes.
+const dateFmt = (d: string) =>
+  new Date(/^\d{4}-\d{2}-\d{2}$/.test(d) ? `${d}T12:00:00` : d).toLocaleDateString("pt-BR");
 
 const CATEGORY_LABELS: Record<string, string> = {
   prolabore: "Pró-labore",
@@ -278,7 +281,8 @@ function MarkPayablePaidButton({ payable: p }: { payable: Payable }) {
         disabled={pending}
         onClick={async () => {
           setPending(true);
-          await markPayablePaid(p.id, Number(amount));
+          const result = await markPayablePaid(p.id, Number(amount));
+          if (result.error) alert(result.error);
           setPending(false);
           setOpen(false);
         }}

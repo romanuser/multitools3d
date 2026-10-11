@@ -113,7 +113,11 @@ export function DashboardSidebar({
     { href: "/dashboard/stl-packs", label: "Pacote de STLs", icon: "layers", locked: !hasVip },
   ];
 
-  const vipItems: NavItem[] = [{ href: "/dashboard/loja", label: "Loja virtual", icon: "store" }];
+  const vipItems: NavItem[] = [
+    { href: "/dashboard/vendas", label: "Venda direta", icon: "cart" },
+    { href: "/dashboard/loja", label: "Loja virtual", icon: "store" },
+    { href: "/dashboard/comprovantes", label: "Comprovantes", icon: "receipt" },
+  ];
 
   const financeItems: NavItem[] = [
     { href: "/dashboard/financeiro/consignados", label: "Consignados", icon: "layers" },
