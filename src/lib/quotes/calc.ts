@@ -38,3 +38,20 @@ export function calcPrice(filamentCost: number, hours: number, params: PricePara
   const profit = (production * Math.max(0, params.marginPercent)) / 100;
   return { filament, energy, production, profit, suggested: production + profit };
 }
+
+// Parâmetros salvos na conta (accounts.pricing_params). Campo ausente ou
+// inválido cai no padrão — assim conta antiga continua funcionando.
+export function readPricingParams(raw: unknown): PriceParams {
+  const src = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const pick = (key: keyof PriceParams) => {
+    const n = Number(src[key]);
+    return Number.isFinite(n) && n >= 0 ? n : DEFAULT_PRICE_PARAMS[key];
+  };
+  return {
+    watts: pick("watts"),
+    kwhPrice: pick("kwhPrice"),
+    labor: pick("labor"),
+    fixedCosts: pick("fixedCosts"),
+    marginPercent: pick("marginPercent"),
+  };
+}

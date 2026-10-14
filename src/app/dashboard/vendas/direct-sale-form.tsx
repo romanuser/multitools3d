@@ -11,7 +11,8 @@ import {
   type SaleItemInput,
 } from "@/lib/sales/types";
 import { estimateProduct, type EstimateFilament } from "@/lib/sales/estimate";
-import { calcPrice, DEFAULT_PRICE_PARAMS } from "@/lib/quotes/calc";
+import { calcPrice, DEFAULT_PRICE_PARAMS, type PriceParams } from "@/lib/quotes/calc";
+import { savePricingParams } from "@/lib/quotes/pricing-actions";
 import { FieldTooltip } from "@/components/field-tooltip";
 import { Icon } from "@/components/icons";
 
@@ -68,11 +69,13 @@ export function DirectSaleForm({
   filaments,
   printers,
   hasInfinitepay,
+  pricingParams = DEFAULT_PRICE_PARAMS,
 }: {
   products: SaleProduct[];
   filaments: EstimateFilament[];
   printers: Printer[];
   hasInfinitepay: boolean;
+  pricingParams?: PriceParams;
 }) {
   const router = useRouter();
 
@@ -95,13 +98,17 @@ export function DirectSaleForm({
   const [sendToQueue, setSendToQueue] = useState(true);
   const [manualPrinterId, setManualPrinterId] = useState(printers[0]?.id ?? "");
   const [showParams, setShowParams] = useState(false);
+  // Mesmos parâmetros salvos no Orçamento (consumo, kWh, mão de obra,
+  // custos fixos, margem) — dá pra ajustar só nesta venda ou salvar.
+  const [savedParams, setSavedParams] = useState<PriceParams>(pricingParams);
   const [params, setParams] = useState({
-    watts: String(DEFAULT_PRICE_PARAMS.watts),
-    kwhPrice: String(DEFAULT_PRICE_PARAMS.kwhPrice),
-    labor: String(DEFAULT_PRICE_PARAMS.labor),
-    fixedCosts: String(DEFAULT_PRICE_PARAMS.fixedCosts),
-    marginPercent: String(DEFAULT_PRICE_PARAMS.marginPercent),
+    watts: String(pricingParams.watts),
+    kwhPrice: String(pricingParams.kwhPrice),
+    labor: String(pricingParams.labor),
+    fixedCosts: String(pricingParams.fixedCosts),
+    marginPercent: String(pricingParams.marginPercent),
   });
+  const [paramsSave, setParamsSave] = useState<{ kind: "idle" | "saving" | "saved" | "error"; message?: string }>({ kind: "idle" });
   const [status, setStatus] = useState<{ kind: "idle" | "saving" | "error"; message?: string }>({ kind: "idle" });
 
   const priceParams = useMemo(
@@ -114,6 +121,20 @@ export function DirectSaleForm({
     }),
     [params]
   );
+
+  const paramsChanged = (Object.keys(priceParams) as (keyof PriceParams)[]).some(
+    (k) => Math.abs(priceParams[k] - savedParams[k]) > 0.0001
+  );
+  async function saveParams() {
+    setParamsSave({ kind: "saving" });
+    const result = await savePricingParams(priceParams);
+    if (result.error) setParamsSave({ kind: "error", message: result.error });
+    else {
+      setSavedParams(priceParams);
+      setParamsSave({ kind: "saved" });
+    }
+  }
+  const fmt = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
   // Cálculo por item: mesma conta do orçamento (filamento + energia +
   // mão de obra + fixos + margem), a partir da receita do produto ou do
@@ -338,6 +359,13 @@ export function DirectSaleForm({
             </button>
           </div>
 
+          {!showParams && (
+            <p className="text-[11px] text-ink-muted -mt-2 mb-4">
+              Cálculo com {fmt(priceParams.watts)} W · kWh R$ {fmt(priceParams.kwhPrice)} · mão de obra R${" "}
+              {fmt(priceParams.labor)} · fixos R$ {fmt(priceParams.fixedCosts)} · margem {fmt(priceParams.marginPercent)}%
+              {paramsChanged ? " (alterado nesta venda)" : ""}
+            </p>
+          )}
           {showParams && (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5 rounded-xl border border-line bg-paper/40 p-3">
               {(
@@ -359,10 +387,26 @@ export function DirectSaleForm({
                   />
                 </label>
               ))}
-              <p className="col-span-2 sm:col-span-5 text-xs text-ink-muted">
-                Mesma conta do Orçamento: filamento + energia + mão de obra + custos fixos, mais a margem. Mão de obra e
-                custos fixos são por unidade.
-              </p>
+              <div className="col-span-2 sm:col-span-5 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-ink-muted">
+                  {paramsChanged
+                    ? "Valores alterados só nesta venda."
+                    : paramsSave.kind === "saved"
+                      ? "Salvo! O Orçamento também passa a usar esses valores."
+                      : "Mesmos valores salvos no Orçamento. Mão de obra e custos fixos são por unidade."}
+                </p>
+                {paramsChanged && (
+                  <button
+                    type="button"
+                    onClick={saveParams}
+                    disabled={paramsSave.kind === "saving"}
+                    className="text-xs bg-amber text-on-accent font-medium rounded-full px-3 py-1.5 disabled:opacity-50"
+                  >
+                    {paramsSave.kind === "saving" ? "Salvando…" : "Salvar como meu padrão"}
+                  </button>
+                )}
+                {paramsSave.kind === "error" && <p className="w-full text-xs text-danger">{paramsSave.message}</p>}
+              </div>
             </div>
           )}
 

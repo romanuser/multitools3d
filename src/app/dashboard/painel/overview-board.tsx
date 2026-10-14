@@ -51,6 +51,9 @@ type StoreStats = {
   topProducts: { name: string; quantity: number; revenue: number }[];
   totalIncome30d: number;
   paidExpenses30d: number;
+  productionCost30d: number;
+  productionJobs30d: number;
+  stockPurchases30d: number;
   profitLoss30d: number;
   pendingReceivable: number;
   overdueReceivableCount: number;
@@ -114,16 +117,28 @@ export function OverviewBoard({
       {storeStats && (
         <section>
           <h2 className="font-display text-lg text-ink mb-3">Resultado (últimos 30 dias)</h2>
-          <div className="grid sm:grid-cols-3 gap-4 mb-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div className="border border-line bg-surface rounded-2xl p-5">
               <p className="text-xs text-ink-muted mb-1">Receita total</p>
               <p className="font-display text-xl text-ink">{money(storeStats.totalIncome30d)}</p>
-              <p className="text-xs text-ink-muted mt-0.5">loja + consignado recebido</p>
+              <p className="text-xs text-ink-muted mt-0.5">vendas + recebimentos</p>
+            </div>
+            <div className="border border-line bg-surface rounded-2xl p-5">
+              <p className="text-xs text-ink-muted mb-1">Custo de produção</p>
+              <p className="font-display text-xl text-ink">{money(storeStats.productionCost30d)}</p>
+              <p className="text-xs text-ink-muted mt-0.5">
+                filamento de {storeStats.productionJobs30d} {storeStats.productionJobs30d === 1 ? "impressão" : "impressões"} + perdas
+              </p>
             </div>
             <div className="border border-line bg-surface rounded-2xl p-5">
               <p className="text-xs text-ink-muted mb-1">Despesas pagas</p>
               <p className="font-display text-xl text-ink">{money(storeStats.paidExpenses30d)}</p>
-              <p className="text-xs text-ink-muted mt-0.5">pró-labore, insumos, custos</p>
+              <p className="text-xs text-ink-muted mt-0.5">pró-labore, custos fixos, outros</p>
+              {storeStats.stockPurchases30d > 0 && (
+                <p className="text-[11px] text-ink-muted mt-1.5 pt-1.5 border-t border-line">
+                  + {money(storeStats.stockPurchases30d)} em filamento pro estoque (vira custo quando usado)
+                </p>
+              )}
             </div>
             <div
               className={`rounded-2xl p-5 border ${
@@ -134,7 +149,7 @@ export function OverviewBoard({
               <p className={`font-display text-xl ${storeStats.profitLoss30d >= 0 ? "text-good" : "text-danger"}`}>
                 {money(Math.abs(storeStats.profitLoss30d))}
               </p>
-              <p className="text-xs text-ink-muted mt-0.5">receita − despesas, no período</p>
+              <p className="text-xs text-ink-muted mt-0.5">receita − produção − despesas</p>
             </div>
           </div>
 

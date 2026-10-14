@@ -3,6 +3,7 @@ import { bootstrapAccount } from "@/lib/auth/actions";
 import { getAccountPlanStatus, hasFullAccess } from "@/lib/plans/access";
 import { DashboardSidebar } from "./sidebar";
 import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Plano Free",
@@ -33,6 +34,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
     getAccountPlanStatus(user.id),
   ]);
 
+  // Contadores do suporte pro menu: respostas novas pro cliente e, se for
+  // admin, chamados com mensagem do cliente que ainda não foi lida.
+  const { count: supportUnread } = await supabase
+    .from("support_tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("account_id", user.id)
+    .eq("user_unread", true);
+  let adminSupportUnread = 0;
+  if (account?.is_admin) {
+    const { count } = await createAdminClient()
+      .from("support_tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("admin_unread", true)
+      .neq("status", "fechado");
+    adminSupportUnread = count ?? 0;
+  }
+
   return (
     <div className="flex flex-col md:flex-row">
       <DashboardSidebar
@@ -41,6 +59,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         planLabel={PLAN_LABELS[plan] || "Plano Free"}
         hasVip={hasFullAccess(plan)}
         isAdmin={Boolean(account?.is_admin)}
+        supportUnread={supportUnread ?? 0}
+        adminSupportUnread={adminSupportUnread}
       />
       <div className="flex-1 min-w-0">{children}</div>
     </div>

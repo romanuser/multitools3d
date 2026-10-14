@@ -16,13 +16,15 @@ type NavItem = {
   locked?: boolean;
   // Ferramenta ainda em construção: aparece no menu, mas não abre.
   soon?: boolean;
+  // Contador (ex: respostas novas do suporte)
+  badge?: number;
 };
 
 function isActive(pathname: string | null, href: string) {
   return href === "/dashboard" ? pathname === "/dashboard" : Boolean(pathname?.startsWith(href));
 }
 
-function NavLink({ href, label, icon, locked, soon, pathname }: NavItem & { pathname: string | null }) {
+function NavLink({ href, label, icon, locked, soon, badge, pathname }: NavItem & { pathname: string | null }) {
   if (soon) {
     return (
       <div
@@ -49,6 +51,14 @@ function NavLink({ href, label, icon, locked, soon, pathname }: NavItem & { path
     >
       <Icon name={icon} className={`shrink-0 ${active ? "text-amber" : ""}`} />
       <span className="truncate">{label}</span>
+      {!!badge && badge > 0 && (
+        <span
+          className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-amber text-on-accent text-[11px] font-semibold flex items-center justify-center shrink-0"
+          aria-label={`${badge} ${badge === 1 ? "novidade" : "novidades"}`}
+        >
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
       {locked && (
         <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-amber/30 px-1.5 py-0.5 text-[10px] font-medium text-amber shrink-0">
           <Icon name="lock" size={10} />
@@ -78,12 +88,16 @@ export function DashboardSidebar({
   planLabel,
   hasVip,
   isAdmin,
+  supportUnread = 0,
+  adminSupportUnread = 0,
 }: {
   companyName: string;
   logoUrl: string | null;
   planLabel: string;
   hasVip: boolean;
   isAdmin: boolean;
+  supportUnread?: number;
+  adminSupportUnread?: number;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -128,6 +142,7 @@ export function DashboardSidebar({
   const accountItems: NavItem[] = [
     { href: "/dashboard/empresa", label: "Dados da empresa", icon: "building" },
     { href: "/dashboard/plano", label: "Plano", icon: "star" },
+    { href: "/dashboard/suporte", label: "Suporte", icon: "support", badge: supportUnread },
   ];
 
   const navContent = (
@@ -178,7 +193,7 @@ export function DashboardSidebar({
             {accountItems.map((item) => (
               <NavLink key={item.href} {...item} pathname={pathname} />
             ))}
-            {isAdmin && <NavLink href="/admin" label="Admin" icon="shield" pathname={pathname} />}
+            {isAdmin && <NavLink href="/admin" label="Admin" icon="shield" badge={adminSupportUnread} pathname={pathname} />}
           </div>
         </div>
       </nav>

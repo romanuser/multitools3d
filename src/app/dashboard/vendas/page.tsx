@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { DirectSaleForm, type SaleProduct } from "./direct-sale-form";
+import { readPricingParams } from "@/lib/quotes/calc";
 
 export default async function VendaDiretaPage() {
   const supabase = await createClient();
@@ -20,7 +21,7 @@ export default async function VendaDiretaPage() {
       .order("name", { ascending: true }),
     supabase.from("filament_stock").select("id, material, color, cost_per_kg").eq("account_id", user.id),
     supabase.from("printers").select("id, name").eq("account_id", user.id),
-    supabase.from("accounts").select("infinitepay_handle").eq("id", user.id).maybeSingle(),
+    supabase.from("accounts").select("infinitepay_handle, pricing_params").eq("id", user.id).maybeSingle(),
   ]);
 
   // Receitas detalhadas (vários filamentos e multipartes) pra estimar o custo.
@@ -78,6 +79,7 @@ export default async function VendaDiretaPage() {
           filaments={filaments ?? []}
           printers={printers ?? []}
           hasInfinitepay={!!account?.infinitepay_handle}
+          pricingParams={readPricingParams(account?.pricing_params)}
         />
       </div>
     </main>

@@ -4,13 +4,16 @@ import { useState } from "react";
 import { QuoteCalculator } from "./quote-calculator";
 import { PatternLibrary } from "./pattern-library";
 import type { QuotePattern } from "@/lib/quotes/types";
+import type { PriceParams } from "@/lib/quotes/calc";
 
 export function OrcamentosWorkspace({
   company,
   patterns,
+  pricingParams,
 }: {
   company: { name: string | null; logoUrl: string | null };
   patterns: QuotePattern[];
+  pricingParams?: PriceParams;
 }) {
   const [tab, setTab] = useState<"calculadora" | "padroes">("calculadora");
 
@@ -26,7 +29,7 @@ export function OrcamentosWorkspace({
       </div>
 
       {tab === "calculadora" ? (
-        <QuoteCalculator company={company} patterns={patterns} />
+        <QuoteCalculator company={company} patterns={patterns} pricingParams={pricingParams} />
       ) : (
         <PatternLibrary patterns={patterns} />
       )}

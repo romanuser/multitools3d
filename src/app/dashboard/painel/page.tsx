@@ -32,6 +32,8 @@ export default async function PainelGeralPage() {
     receivableData,
     payableData,
     directSalesData,
+    finishedJobsData,
+    partsData,
   ] = await Promise.all([
     supabase
       .from("printers")
@@ -67,7 +69,7 @@ export default async function PainelGeralPage() {
     showStore
       ? supabase
           .from("accounts_payable")
-          .select("id, total_amount, paid_amount, due_date, status, settled_at")
+          .select("id, category, total_amount, paid_amount, due_date, status, settled_at")
           .eq("account_id", user.id)
       : Promise.resolve({ data: null }),
     showStore
@@ -78,6 +80,20 @@ export default async function PainelGeralPage() {
           // fiado e link de cobrança entram quando forem quitados, via Contas a receber
           .not("payment_method", "in", "(a_receber,link)")
           .gte("created_at", thirtyDaysAgo.toISOString())
+      : Promise.resolve({ data: null }),
+    // Custo de produção: impressões concluídas (ou com falha) no período —
+    // o custo do filamento é calculado pela fila no momento da baixa.
+    showStore
+      ? supabase
+          .from("print_jobs")
+          .select("id, cost_snapshot, status")
+          .eq("account_id", user.id)
+          .in("status", ["concluida", "falha_recalculada"])
+          .gte("finished_at", thirtyDaysAgo.toISOString())
+      : Promise.resolve({ data: null }),
+    // Partes de produtos multipartes (o banco só devolve as da própria conta).
+    showStore
+      ? supabase.from("print_job_parts").select("job_id, cost_snapshot, failure_cost, finished_at, created_at").limit(5000)
       : Promise.resolve({ data: null }),
   ]);
 
@@ -150,9 +166,39 @@ export default async function PainelGeralPage() {
       (r) => (r.status === "pendente" || r.status === "parcial") && r.due_date < todayStr
     ).length;
 
-    const paidExpenses = payables
-      .filter((p) => p.settled_at && p.settled_at >= thirtyDaysAgo.toISOString())
+    // Compra de filamento pra estoque NÃO é despesa do período: o dinheiro
+    // virou estoque, e vira custo quando o filamento é usado numa peça (no
+    // custo de produção abaixo). Contar os dois seria cobrar duas vezes.
+    const paidInWindow = payables.filter((p) => p.settled_at && p.settled_at >= thirtyDaysAgo.toISOString());
+    const paidExpenses = paidInWindow
+      .filter((p) => p.category !== "filamento_estoque")
       .reduce((sum, p) => sum + Number(p.paid_amount), 0);
+    const stockPurchases30d = paidInWindow
+      .filter((p) => p.category === "filamento_estoque")
+      .reduce((sum, p) => sum + Number(p.paid_amount), 0);
+
+    // Custo de produção (filamento usado nas peças + perdas de falhas):
+    //  - impressão normal / vários filamentos: custo gravado na conclusão
+    //  - multipartes: custo de cada parte concluída + perdas das partes que
+    //    falharam (o custo "do produto" não entra de novo, senão duplica)
+    type PartRow = { job_id: string; cost_snapshot: number | null; failure_cost: number | null; finished_at: string | null; created_at: string };
+    const parts = (partsData.data ?? []) as PartRow[];
+    const jobsWithParts = new Set(parts.map((p) => p.job_id));
+    const windowIso = thirtyDaysAgo.toISOString();
+    const finishedJobs = (finishedJobsData.data ?? []) as { id: string; cost_snapshot: number | null }[];
+    const singleJobsCost = finishedJobs
+      .filter((j) => !jobsWithParts.has(j.id))
+      .reduce((sum, j) => sum + Number(j.cost_snapshot || 0), 0);
+    const partsCost = parts
+      .filter((p) => p.finished_at && p.finished_at >= windowIso)
+      .reduce((sum, p) => sum + Number(p.cost_snapshot || 0), 0);
+    const partsFailures = parts
+      .filter((p) => p.created_at >= windowIso)
+      .reduce((sum, p) => sum + Number(p.failure_cost || 0), 0);
+    const productionCost30d = Math.round((singleJobsCost + partsCost + partsFailures) * 100) / 100;
+    const productionJobs30d =
+      finishedJobs.filter((j) => !jobsWithParts.has(j.id)).length +
+      new Set(parts.filter((p) => p.finished_at && p.finished_at >= windowIso).map((p) => p.job_id)).size;
     const pendingPayable = payables
       .filter((p) => p.status === "pendente" || p.status === "parcial")
       .reduce((sum, p) => sum + (Number(p.total_amount) - Number(p.paid_amount)), 0);
@@ -161,7 +207,7 @@ export default async function PainelGeralPage() {
     ).length;
 
     const totalIncome30d = revenue30d + receivedConsignado;
-    const profitLoss30d = totalIncome30d - paidExpenses;
+    const profitLoss30d = totalIncome30d - productionCost30d - paidExpenses;
 
     storeStats = {
       totalOrders: orders.length,
@@ -177,6 +223,9 @@ export default async function PainelGeralPage() {
       topProducts,
       totalIncome30d,
       paidExpenses30d: paidExpenses,
+      productionCost30d,
+      productionJobs30d,
+      stockPurchases30d,
       profitLoss30d,
       pendingReceivable,
       overdueReceivableCount,

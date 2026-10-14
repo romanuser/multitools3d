@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { createQuoteRecord } from "@/lib/quotes/actions";
 import type { QuotePattern } from "@/lib/quotes/types";
-import { calcPrice } from "@/lib/quotes/calc";
+import { calcPrice, DEFAULT_PRICE_PARAMS, type PriceParams } from "@/lib/quotes/calc";
+import { savePricingParams } from "@/lib/quotes/pricing-actions";
 
 const money = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -11,9 +12,11 @@ const money = (value: number) =>
 export function QuoteCalculator({
   company,
   patterns,
+  pricingParams = DEFAULT_PRICE_PARAMS,
 }: {
   company: { name: string | null; logoUrl: string | null };
   patterns: QuotePattern[];
+  pricingParams?: PriceParams;
 }) {
   const [selectedPatternId, setSelectedPatternId] = useState("");
   const [showPatternInfo, setShowPatternInfo] = useState(false);
@@ -25,17 +28,40 @@ export function QuoteCalculator({
   // numérico de verdade (pra calcular) sai de toNumber() na hora de usar.
   const [filamentPrice, setFilamentPrice] = useState("99");
   const [grams, setGrams] = useState("100");
-  const [watts, setWatts] = useState("200");
+  const [watts, setWatts] = useState(String(pricingParams.watts));
   const [hours, setHours] = useState("5");
-  const [kwhPrice, setKwhPrice] = useState("0.8");
-  const [labor, setLabor] = useState("15");
-  const [fixedCosts, setFixedCosts] = useState("0");
-  const [margin, setMargin] = useState("30");
+  const [kwhPrice, setKwhPrice] = useState(String(pricingParams.kwhPrice));
+  const [labor, setLabor] = useState(String(pricingParams.labor));
+  const [fixedCosts, setFixedCosts] = useState(String(pricingParams.fixedCosts));
+  const [margin, setMargin] = useState(String(pricingParams.marginPercent));
 
   const toNumber = (v: string) => {
     const n = Number(v.replace(",", "."));
     return Number.isFinite(n) ? n : 0;
   };
+
+  // Padrão salvo na conta (o mesmo que a Venda direta usa)
+  const [savedParams, setSavedParams] = useState<PriceParams>(pricingParams);
+  const [saveState, setSaveState] = useState<{ kind: "idle" | "saving" | "saved" | "error"; message?: string }>({ kind: "idle" });
+  const currentParams: PriceParams = {
+    watts: toNumber(watts),
+    kwhPrice: toNumber(kwhPrice),
+    labor: toNumber(labor),
+    fixedCosts: toNumber(fixedCosts),
+    marginPercent: toNumber(margin),
+  };
+  const paramsChanged = (Object.keys(currentParams) as (keyof PriceParams)[]).some(
+    (k) => Math.abs(currentParams[k] - savedParams[k]) > 0.0001
+  );
+  async function saveDefaults() {
+    setSaveState({ kind: "saving" });
+    const result = await savePricingParams(currentParams);
+    if (result.error) setSaveState({ kind: "error", message: result.error });
+    else {
+      setSavedParams(currentParams);
+      setSaveState({ kind: "saved" });
+    }
+  }
 
   const [clientName, setClientName] = useState("");
   const [clientCompany, setClientCompany] = useState("");
@@ -215,12 +241,12 @@ export function QuoteCalculator({
     setMaterial("PLA");
     setFilamentPrice("99");
     setGrams("100");
-    setWatts("200");
+    setWatts(String(savedParams.watts));
     setHours("5");
-    setKwhPrice("0.8");
-    setLabor("15");
-    setFixedCosts("0");
-    setMargin("30");
+    setKwhPrice(String(savedParams.kwhPrice));
+    setLabor(String(savedParams.labor));
+    setFixedCosts(String(savedParams.fixedCosts));
+    setMargin(String(savedParams.marginPercent));
     setStatus({ kind: "idle" });
   }
 
@@ -330,6 +356,26 @@ export function QuoteCalculator({
                 ))}
               </Presets>
             </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-paper/40 px-3 py-2.5">
+            <p className="text-xs text-ink-muted">
+              {paramsChanged
+                ? "Você mudou consumo, kWh, mão de obra, custos ou margem."
+                : saveState.kind === "saved"
+                  ? "Salvo! A Venda direta também usa esses valores."
+                  : "Esses são os seus valores padrão — a Venda direta usa os mesmos."}
+            </p>
+            {paramsChanged && (
+              <button
+                type="button"
+                onClick={saveDefaults}
+                disabled={saveState.kind === "saving"}
+                className="text-xs bg-amber text-on-accent font-medium rounded-full px-3.5 py-1.5 disabled:opacity-50"
+              >
+                {saveState.kind === "saving" ? "Salvando…" : "Salvar como meu padrão"}
+              </button>
+            )}
+            {saveState.kind === "error" && <p className="w-full text-xs text-danger">{saveState.message}</p>}
           </div>
         </Section>
 

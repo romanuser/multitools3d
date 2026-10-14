@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { OrcamentosWorkspace } from "./orcamentos-workspace";
 import type { QuotePattern } from "@/lib/quotes/types";
+import { readPricingParams } from "@/lib/quotes/calc";
 
 export default async function OrcamentosPage() {
   const supabase = await createClient();
@@ -15,7 +16,7 @@ export default async function OrcamentosPage() {
   const [{ data: account }, { data: patterns }] = await Promise.all([
     supabase
       .from("accounts")
-      .select("company_name, company_logo_url")
+      .select("company_name, company_logo_url, pricing_params")
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -56,6 +57,7 @@ export default async function OrcamentosPage() {
             logoUrl: account?.company_logo_url ?? null,
           }}
           patterns={(patterns as QuotePattern[]) ?? []}
+          pricingParams={readPricingParams(account?.pricing_params)}
         />
       </div>
     </main>

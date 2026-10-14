@@ -13,6 +13,7 @@ const dateFmt = (d: string) =>
 const CATEGORY_LABELS: Record<string, string> = {
   prolabore: "Pró-labore",
   consignado_insumo: "Consignado de insumos",
+  filamento_estoque: "Compra de filamento (estoque)",
   custo_mensal: "Custo mensal",
   outro: "Outro",
 };
@@ -195,11 +196,18 @@ function NewPayableForm({ suppliers, onDone }: { suppliers: Supplier[]; onDone: 
         <select name="category" value={category} onChange={(e) => setCategory(e.target.value)} className="input">
           <option value="prolabore">Pró-labore</option>
           <option value="consignado_insumo">Consignado de insumos</option>
+          <option value="filamento_estoque">Compra de filamento (estoque)</option>
           <option value="custo_mensal">Custo mensal</option>
           <option value="outro">Outro</option>
         </select>
       </label>
 
+      {category === "filamento_estoque" && (
+        <p className="text-xs text-ink-muted">
+          Não entra como despesa no lucro do Dashboard: o filamento vira custo quando é usado numa peça (custo de
+          produção). Assim ele não é descontado duas vezes.
+        </p>
+      )}
       {category === "consignado_insumo" && (
         <label className="block">
           <span className="block text-sm text-ink-muted mb-1">Fornecedor</span>

@@ -5,11 +5,13 @@ const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curr
 const CATEGORY_LABELS: Record<string, string> = {
   prolabore: "Pró-labore",
   consignado_insumo: "Consignado de insumos",
+  filamento_estoque: "Compra de filamento (estoque)",
   custo_mensal: "Custo mensal",
   outro: "Outro",
 };
 const CATEGORY_COLORS: Record<string, string> = {
   prolabore: "bg-amber",
+  filamento_estoque: "bg-sky-400",
   consignado_insumo: "bg-accent-blue",
   custo_mensal: "bg-accent-pink",
   outro: "bg-ink-muted",

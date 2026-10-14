@@ -31,6 +31,10 @@ export default async function AdminPage({
     .from("accounts")
     .select("id, email, company_name, plan, plan_expires_at, is_admin, welcome_email_sent_at")
     .order("email");
+  const { count: openTickets } = await admin
+    .from("support_tickets")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["aberto", "em_analise"]);
 
   return (
     <main className="min-h-screen px-6 py-12">
@@ -41,9 +45,14 @@ export default async function AdminPage({
 
         <div className="flex items-center justify-between mt-4 mb-1">
           <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Clientes</h1>
-          <Link href="/admin/stl-packs" className="text-sm text-amber hover:underline">
-            Gerenciar pacote de STLs →
-          </Link>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link href="/admin/suporte" className="text-sm text-amber hover:underline">
+              Chamados de suporte{openTickets ? ` (${openTickets} precisam de você)` : ""} →
+            </Link>
+            <Link href="/admin/stl-packs" className="text-sm text-amber hover:underline">
+              Gerenciar pacote de STLs →
+            </Link>
+          </div>
         </div>
         <p className="text-sm text-ink-muted mb-8">
           {accounts?.length ?? 0} conta(s) cadastrada(s). Você pode ajustar o plano manualmente

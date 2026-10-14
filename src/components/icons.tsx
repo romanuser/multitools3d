@@ -107,6 +107,14 @@ const paths = {
     </>
   ),
   trend: <path d="M4 15l5-5 4 4 7-7M20 10V5h-5" />,
+  support: (
+    <>
+      <path d="M4.5 12a7.5 7.5 0 0 1 15 0" />
+      <rect x="3" y="12" width="4" height="6" rx="1.5" />
+      <rect x="17" y="12" width="4" height="6" rx="1.5" />
+      <path d="M19 18c0 1.7-1.6 3-4 3h-2.5" />
+    </>
+  ),
   cart: (
     <>
       <path d="M3 4h2l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.1" />
