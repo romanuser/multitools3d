@@ -22,6 +22,13 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://multiferramenta3d.com"),
+  openGraph: {
+    type: "website", locale: "pt_BR", siteName: "Multiferramenta 3D",
+    title: "Multiferramenta 3D — tudo da sua impressão 3D num painel só",
+    description: "Orçamento, estoque de filamento, fila de impressão e loja virtual pra quem vive de impressão 3D.",
+  },
+  twitter: { card: "summary_large_image" },
   title: {
     default: "Multiferramenta 3D",
     template: "%s | Multiferramenta 3D",

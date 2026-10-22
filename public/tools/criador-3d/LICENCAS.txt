@@ -1,0 +1,15 @@
+CRIADOR 3D — MULTIFERRAMENTA 3D · LICENÇAS DE TERCEIROS
+
+Os modelos (arquivos .scad da pasta "modelos") são criação própria do Multiferramenta 3D.
+
+OpenSCAD (motor de geração 3D, compilado para WebAssembly) — GNU General Public License v2
+  Código-fonte: https://github.com/openscad/openscad
+  Versão para navegador: https://github.com/lorenzowritescode/openscad-wasm (pacote openscad-wasm-prebuilt)
+  O texto completo da licença está em vendor/COPYING-OpenSCAD.txt
+
+three.js (visualização 3D) — MIT License · https://github.com/mrdoob/three.js
+qrcode-generator (QR Code) — MIT License · https://github.com/kazuhikoarase/qrcode-generator
+
+Fontes (Google Fonts) — SIL Open Font License 1.1 (uso comercial permitido):
+  Pacifico, Courgette, Lobster, Great Vibes, Satisfy, Kaushan Script, Bebas Neue, Anton,
+  Poppins, Archivo Black, Righteous, Luckiest Guy · https://fonts.google.com

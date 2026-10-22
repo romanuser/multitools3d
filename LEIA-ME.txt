@@ -1,51 +1,25 @@
-Aba "Pacote de STLs" v3 -- de volta pro Supabase Storage (sem precisar de
-cartao de credito), robo 100% aleatorio (sem tendencia).
+MULTIFERRAMENTA 3D — ATUALIZAÇÃO: Criador 3D + Google (SEO) + E-mails de boas-vindas
+Feito em cima do código que você mandou (src, public, netlify). Testado com build de produção.
 
-POR QUE VOLTOU PRO SUPABASE
-O Cloudflare R2 exige cadastrar um cartao de credito mesmo no plano gratuito.
-Sem isso disponível agora, voltamos pro Supabase Storage -- que voce ja tem
-configurado, sem pedir nada novo.
+1) COPIE as pastas "src", "public" e "netlify" deste zip por cima das do repositório
+   (substitua tudo quando o Windows perguntar). Nada seu foi apagado: só foram
+   acrescentados arquivos e alteradas 3 linhas de menu/lista/layout.
 
-O QUE ISSO MUDA NA PRATICA
-- Espaco: 1GB gratis (compartilhado com o resto do app)
-- Trafego de download: 5GB gratis por mes
-- Se um dia isso apertar (muito download por dia), da pra migrar so essa
-  parte pro R2 depois, quando tiver cartao -- o código foi feito separado
-  o suficiente pra essa troca ser rapida.
+2) SUPABASE (projeto do Multiferramenta 3D) → SQL Editor → rode:
+   supabase/sequencia-boas-vindas.sql
 
-O upload continua indo DIRETO do navegador pro Storage (sem passar pelo
-servidor do site), pra nao esbarrar no limite de tamanho de arquivo das
-funcoes da Netlify -- isso nao mudou, so troca o destino final.
+3) NETLIFY (site do Multiferramenta) → Environment variables → adicione:
+   CRON_SECRET      = nEC2zc1jYT3ZNhERkO9OPODneb_Fh7Lb
+   SUPPORT_WHATSAPP = 55DDDNUMERO   (seu WhatsApp, só números)
 
-PASSO 1 -- RODAR O SQL NO SUPABASE (se ainda nao rodou)
-Arquivo em anexo: migration.sql -- se ja rodou da vez anterior, pule esse passo.
+4) git add -A → git commit -m "criador 3d, google e emails" → git push
 
-PASSO 2 -- CRIAR O BUCKET NO SUPABASE STORAGE
-No Supabase -> Storage -> New bucket:
-  Nome: stl-packs
-  Public: NAO (privado -- o download so acontece por link temporario)
+5) CONFERIR depois do deploy:
+   - Menu → "Criador 3D"
+   - https://multiferramenta3d.com/sitemap.xml   e   /robots.txt
+   - Teste dos e-mails (não envia, só mostra quem receberia):
+     https://multiferramenta3d.com/api/cron/onboarding?secret=nEC2zc1jYT3ZNhERkO9OPODneb_Fh7Lb&dry=1
 
-PASSO 3 -- VARIAVEL DE AMBIENTE
-Só precisa desta (as do Cloudflare R2 e do Mercado Livre nao sao mais usadas,
-pode ignorar/remover se ja tinha colocado):
-
-    CRON_SECRET=escolha-uma-senha-aleatoria-longa-aqui
-
-(Se ja configurou isso numa tentativa anterior, nao precisa mudar.)
-
-COMO TESTAR
-1. Va em /admin/stl-packs
-2. Suba pelo menos 3 arquivos
-3. Clique em "Publicar de hoje agora"
-4. Va em /dashboard/stl-packs e veja os arquivos aparecerem, com download
-   funcionando de verdade
-
-COMO APLICAR
-1. Rode o SQL (passo 1, se ainda nao rodou)
-2. Crie o bucket (passo 2)
-3. Adicione o CRON_SECRET (passo 3, se ainda nao tem)
-4. Copie os arquivos por cima do projeto (Copy-Item -Force, nunca arraste
-   pelo Explorador)
-5. npm install (dessa vez REMOVE as dependencias do R2 que nao sao mais
-   usadas -- o npm install cuida disso sozinho a partir do package.json)
-6. Commit + push
+6) GOOGLE SEARCH CONSOLE: propriedade "Domínio" multiferramenta3d.com → código TXT
+   → Netlify → DNS → multiferramenta3d.com → Add new record (TXT, nome @) → Verificar
+   → Sitemaps → enviar "sitemap.xml".
