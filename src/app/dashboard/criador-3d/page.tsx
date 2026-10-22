@@ -20,7 +20,7 @@ export default async function Criador3DPage() {
         </Link>
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-2">Criador 3D</h1>
         <p className="text-sm text-ink-muted">
-          Letreiro LED, chaveiro, porta-copos, topo de bolo e placa Pix: personalize e baixe em STL ou 3MF multicor.
+          14 modelos: letreiro LED, litofania, chaveiro de logo, cortador de biscoito, carimbo, placas Pix e Wi-Fi, tag de pet, caixas e mais. Baixe em STL ou 3MF multicor.
         </p>
       </div>
       <div className="max-w-7xl mx-auto w-full flex-1 rounded-2xl overflow-hidden border border-line" style={{ minHeight: "85vh" }}>

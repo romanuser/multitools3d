@@ -9,6 +9,8 @@ OpenSCAD (motor de geração 3D, compilado para WebAssembly) — GNU General Pub
 
 three.js (visualização 3D) — MIT License · https://github.com/mrdoob/three.js
 qrcode-generator (QR Code) — MIT License · https://github.com/kazuhikoarase/qrcode-generator
+d3-contour e d3-array (contorno de logos) — ISC License · https://github.com/d3/d3-contour
+Imagens de exemplo (logo de café e paisagem) — criação própria do Multiferramenta 3D
 
 Fontes (Google Fonts) — SIL Open Font License 1.1 (uso comercial permitido):
   Pacifico, Courgette, Lobster, Great Vibes, Satisfy, Kaushan Script, Bebas Neue, Anton,

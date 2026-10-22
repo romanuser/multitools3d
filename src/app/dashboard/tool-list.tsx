@@ -43,7 +43,7 @@ export const manageTools: Tool[] = [
 export const createTools: Tool[] = [
   {
     title: "Criador 3D",
-    description: "Letreiro LED, chaveiro, porta-copos, topo de bolo e placa Pix prontos pra imprimir.",
+    description: "Litofania, chaveiro de logo, letreiro LED, cortador, placas Pix e Wi-Fi e mais: 14 modelos prontos pra imprimir.",
     href: "/dashboard/criador-3d",
     icon: "star",
   },
