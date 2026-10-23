@@ -1,24 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AssistantWidget } from "@/components/assistant-widget";
 import { InstallPrompt } from "@/components/install-prompt";
 
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-bricolage",
-});
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-plex-sans",
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-plex-mono",
+// Fontes dentro do projeto (sem baixar do Google no build — o Google mudou a IBM Plex Sans
+// pra versão variável e o carregador do Next passou a falhar).
+const bricolage = localFont({ src: "./fonts/BricolageGrotesque.woff2", weight: "200 800", variable: "--font-bricolage", display: "swap" });
+const plexSans = localFont({ src: "./fonts/IBMPlexSans.woff2", weight: "400 700", variable: "--font-plex-sans", display: "swap" });
+const plexMono = localFont({
+  src: [{ path: "./fonts/IBMPlexMono-Regular.woff2", weight: "400" }, { path: "./fonts/IBMPlexMono-Medium.woff2", weight: "500" }],
+  variable: "--font-plex-mono", display: "swap",
 });
 
 export const metadata: Metadata = {
