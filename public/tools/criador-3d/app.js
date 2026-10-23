@@ -4,7 +4,7 @@ import { FONTES, MODELOS } from "./models.js";
 import { stlTriangles, make3mf } from "./export3d.js";
 import { pixPayload } from "./pix.js";
 import { vetorizarLogo } from "./logo.js";
-import { gerarLitofania } from "./litofania.js";
+import { gerarLitofania, gerarCilindro, gerarLitofaniaForma } from "./litofania.js";
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, attrs); kids.forEach((k) => e.append(k)); return e; };
@@ -111,7 +111,7 @@ function campoUI(c) {
     return wrap;
   }
   if (c.tipo === "sim") {
-    const i = el("input", { type: "checkbox", id, checked: c.padrao }); i.dataset.campo = c.id; if (c.id === "inverter") i.onchange = desenharPrevia;
+    const i = el("input", { type: "checkbox", id, checked: c.padrao }); i.dataset.campo = c.id; if (c.id === "inverter") i.onchange = desenharPrevia; if (c.id === "previa_luz") i.onchange = () => resultado && desenhar();
     wrap.append(el("label", { className: "chk", htmlFor: id }, i, c.rotulo));
   } else if (c.tipo === "fonte") {
     const s = el("select", { id }); s.dataset.campo = c.id;
@@ -150,6 +150,27 @@ function lerValores() {
   return v;
 }
 
+// partes que existem com essas opções (ex.: pé só na placa de balcão)
+const partesAtivas = (p) => modelo.partes.filter((pt) => !modelo.partesSe?.[pt.id] || modelo.partesSe[pt.id](p));
+let paramsAtual = {}, aviso = "";
+const separadasAgora = () => !!(modelo.separadas || modelo.separaPartes);
+// essa parte é impressa separada? (ex.: na placa Pix só o pé; no letreiro, a tampa)
+const parteSolta = (pid, i) => i > 0 && (modelo.separaPartes ? modelo.separaPartes.includes(pid) : !!modelo.separadas);
+// recorte quadrado no centro da foto (litofania em formato)
+function fotoQuadrada(img) {
+  const lado = Math.min(img.w, img.h), x0 = Math.floor((img.w - lado) / 2), y0 = Math.floor((img.h - lado) / 2), g = new Float32Array(lado * lado);
+  for (let y = 0; y < lado; y++) for (let x = 0; x < lado; x++) g[y * lado + x] = img.gray[(y + y0) * img.w + x + x0];
+  return { gray: g, lado };
+}
+// argola do chaveiro de litofania: topo da metade esquerda no coração, topo do meio nos outros; encosta 1,5 mm na moldura
+function posArgola(contorno, forma, furo) {
+  const cand = forma === "coracao" ? contorno.filter(([x]) => x < 0) : contorno; let topo = cand[0];
+  for (const q of cand) if (q[1] > topo[1]) topo = q;
+  return [forma === "coracao" ? topo[0] : 0, topo[1] + (furo + 4.4) / 2 - 1.5];
+}
+const paraSTL = (L) => { const n = L.triangulos, buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf); dv.setUint32(80, n, true);
+  for (let i = 0; i < n; i++) for (let k = 0; k < 9; k++) dv.setFloat32(84 + i * 50 + 12 + k * 4, L.tri[i * 9 + k], true); return buf; };
+
 // ---------- gerar ----------
 function prepararParametros(v) {
   const f = FONTES.find((x) => x.nome === v.fonte) || FONTES[0];
@@ -160,10 +181,22 @@ function prepararParametros(v) {
     const q = window.qrcode(0, "M"); q.addData(payload); q.make();
     const n = q.getModuleCount();
     p.qr = Array.from({ length: n }, (_, y) => Array.from({ length: n }, (_, x) => (q.isDark(y, x) ? "1" : "0")).join(""));
-    if (p.altura < p.largura + 30) p.altura = p.largura + 40;   // espaço pro título e pra chave
-    delete p.recebedor; delete p.cidade; delete p.valor;
+    p.valor = v.valor > 0 ? "R$ " + Number(v.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+    delete p.cidade;
+    const lado = p.largura - 16 - (p.formato === "compacta" ? 6 : 0), mod = lado / n;
+    aviso = mod < 1.5 ? ` · atenção: QR pequeno (quadradinhos de ${mod.toFixed(1).replace(".", ",")} mm) — aumente a largura` : "";
   }
-  if (modelo.logo) {
+  if (modelo.logo === "opcional") {
+    const usa = p.centro === "logo" || p.topo === "logo";
+    if (usa) {
+      const img = imagens.logo; if (!img) throw new Error("Envie o logo (ou escolha estrela).");
+      const r = vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: 30 });
+      if (!r || !r.poligonos.length) throw new Error("Não achei o desenho no logo: mexa no limiar ou marque “inverter”.");
+      p.logo = r.poligonos; p.lw = 30; p.lh = +r.altura.toFixed(2);
+    }
+    delete p.limiar; delete p.inverter;
+  }
+  if (modelo.logo && modelo.logo !== "opcional") {
     const img = imagens.logo; if (!img) throw new Error("Envie um logo ou desenho.");
     const r = vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: v.largura });
     if (!r || !r.poligonos.length) throw new Error("Não achei o desenho na imagem: mexa no limiar ou marque “inverter”.");
@@ -183,7 +216,7 @@ function prepararParametros(v) {
     if (v.seguranca === "nopass") p.mostrar_senha = false;
     delete p.seguranca;
   }
-  const precisaTexto = { letreiro_led: "texto", chaveiro: "texto", porta_copos: "texto", topo_bolo: "texto", tag_pet: "nome", placa_porta: "texto" }[modelo.id];
+  const precisaTexto = { letreiro_led: "texto", chaveiro: "texto", porta_copos: "texto", topo_bolo: "texto", tag_pet: "nome", placa_porta: "texto", medalha: "texto", trofeu: "texto", cracha: "nome" }[modelo.id];
   if (precisaTexto && !p[precisaTexto]) throw new Error("Digite um texto.");
   const temFonte = modelo.campos.some((c) => c.tipo === "fonte");
   return { params: p, fontes: [...(temFonte ? [f.arquivo] : []), ...(modelo.fontesExtras || [])].filter((x, i, a) => a.indexOf(x) === i) };
@@ -191,40 +224,69 @@ function prepararParametros(v) {
 
 function gerar() {
   let prep;
+  aviso = "";
   try { prep = prepararParametros(lerValores()); } catch (e) { status(e.message, true); return; }
+  paramsAtual = prep.params;
   const id = ++pedido; $("gerar").disabled = true; status("Gerando… (a primeira vez demora um pouco mais)");
-  if (modelo.motor === "js") {                       // litofania: gerada aqui mesmo, sem OpenSCAD
+  if (modelo.motor === "js") {                       // litofanias: a foto vira peça aqui mesmo
     const img = imagens.foto; if (!img) { $("gerar").disabled = false; status("Envie uma foto.", true); return; }
     setTimeout(() => {
-      const t = performance.now(); const L = gerarLitofania(img.gray, img.w, img.h, prep.params);
-      const n = L.triangulos, buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf); dv.setUint32(80, n, true);
-      for (let i = 0; i < n; i++) for (let k = 0; k < 9; k++) dv.setFloat32(84 + i * 50 + 12 + k * 4, L.tri[i * 9 + k], true);
-      receber({ id, ok: true, partes: [{ parte: modelo.partes[0].id, stl: buf, ms: Math.round(performance.now() - t) }] });
+      const pr = prep.params, formato = pr.formato, t = performance.now();
+      const chaveiro = modelo.id === "chaveiro_litofania", emForma = chaveiro || ["coracao", "circulo", "quadrado"].includes(formato);
+      const comBase = partesAtivas(pr).some((x) => x.id === "base");
+      let L;
+      if (emForma) { const q = fotoQuadrada(img); L = gerarLitofaniaForma(q.gray, q.lado, { forma: formato, tam: pr.largura, moldura: pr.moldura, tmin: pr.tmin, tmax: pr.tmax, gama: pr.gama, res: chaveiro ? 0.2 : 0.3 }); }
+      else if (formato === "cilindro") L = gerarCilindro(img.gray, img.w, img.h, { ...pr, extra: comBase ? 6 : 0 });
+      else L = gerarLitofania(img.gray, img.w, img.h, { ...pr, extra: comBase ? 6 : 0 });
+      const buf = paraSTL(L);
+      const foto = { parte: "litofania", stl: buf, ms: Math.round(performance.now() - t), raio: L.raio, formato: emForma ? "plana" : formato, tmin: pr.tmin };
+      if (chaveiro) {                                  // argola: o motor OpenSCAD junta a argola na moldura
+        const [px, py] = posArgola(L.contorno, formato, pr.furo);
+        litoParcial = { id, foto, substituir: true };
+        worker.postMessage({ id, modelo: "litofania_forma", partes: ["litofania"], fontes: [], arquivos: [{ nome: "lito.stl", dados: buf.slice(0) }],
+          params: { furo: pr.furo, px: +px.toFixed(3), py: +py.toFixed(3), tmax: pr.tmax } });
+        return;
+      }
+      if (!comBase) { receber({ id, ok: true, partes: [foto] }); return; }
+      litoParcial = { id, foto };
+      worker.postMessage({ id, modelo: "litofania_base", partes: ["base"], fontes: [],
+        params: { formato, tipo: pr.base, largura: +L.largura.toFixed(3), esp: pr.tmax, raio: +L.raio.toFixed(4) } });
     }, 30);
     return;
   }
-  worker.postMessage({ id, modelo: modelo.id, params: prep.params, partes: modelo.partes.map((p) => p.id), fontes: prep.fontes });
+  worker.postMessage({ id, modelo: modelo.id, params: prep.params, partes: partesAtivas(prep.params).map((p) => p.id), fontes: prep.fontes });
 }
 
-worker.onmessage = ({ data }) => receber(data);
+let litoParcial = null;   // a foto da litofania esperando a base ficar pronta
+worker.onmessage = ({ data }) => {
+  if (litoParcial && data.id === litoParcial.id && data.ok) {
+    const f = litoParcial.foto;
+    data = litoParcial.substituir   // chaveiro: a peça com argola substitui a foto pura (mantendo os dados da prévia)
+      ? { ...data, partes: data.partes.map((x) => ({ ...x, raio: f.raio, formato: f.formato, tmin: f.tmin })) }
+      : { ...data, partes: [f, ...data.partes] };
+    litoParcial = null;
+  }
+  receber(data);
+};
 function receber(data) {
   if (data.id !== pedido) return;                       // resposta de um pedido antigo
   if (data.progresso) { status(`Gerando… parte "${data.progresso}" pronta`); return; }
   $("gerar").disabled = false;
   if (!data.ok) { status("Não deu pra gerar: " + data.erro, true); return; }
-  // peças separadas (ex.: tampa do letreiro) ficam lado a lado
-  let dy = 0;
+  // partes impressas separadas (ex.: tampa do letreiro, pé da placa) ficam logo abaixo, com 10 mm de espaço;
+  // as outras ficam no lugar (são a mesma peça em outra cor)
+  let minYAll = Infinity;
   resultado = data.partes.map((r, i) => {
     const def = modelo.partes.find((p) => p.id === r.parte); const tri = stlTriangles(r.stl);
-    let off = 0;
-    if (modelo.separadas && i > 0) { let minY = Infinity, maxY = -Infinity; for (let k = 1; k < tri.length; k += 3) { minY = Math.min(minY, tri[k]); maxY = Math.max(maxY, tri[k]); } off = dy - 10 - maxY; }   // logo abaixo do corpo, com 10 mm de espaço
-    if (modelo.separadas && i === 0) { let minY = Infinity; for (let k = 1; k < tri.length; k += 3) minY = Math.min(minY, tri[k]); dy = minY; }
-    return { parte: r.parte, nome: def.nome, tri, dy: off, stl: r.stl, ms: r.ms };
+    let mn = Infinity, mx = -Infinity; for (let k = 1; k < tri.length; k += 3) { mn = Math.min(mn, tri[k]); mx = Math.max(mx, tri[k]); }
+    const solta = parteSolta(r.parte, i), off = solta ? minYAll - 10 - mx : 0;
+    minYAll = Math.min(minYAll, mn + off);
+    return { parte: r.parte, nome: def.nome, tri, dy: off, solta, stl: r.stl, ms: r.ms, raio: r.raio, formato: r.formato, tmin: r.tmin };
   });
   desenhar(); enquadrar(); montarBarra();
   if (rolarDepois) { rolarDepois = false; view.scrollIntoView({ behavior: "smooth", block: "start" }); }
-  status(`Pronto em ${(data.partes.reduce((s, p) => s + p.ms, 0) / 1000).toFixed(1).replace(".", ",")} s · arraste pra girar`);
-  statusTimer = setTimeout(() => status(""), 3500);
+  status(`Pronto em ${(data.partes.reduce((s, p) => s + p.ms, 0) / 1000).toFixed(1).replace(".", ",")} s · arraste pra girar${aviso}`, !!aviso);
+  if (!aviso) statusTimer = setTimeout(() => status(""), 3500);      // aviso (ex.: QR pequeno) fica na tela
 }
 worker.onerror = (e) => { $("gerar").disabled = false; status("Erro no motor 3D: " + (e.message || "seu navegador pode não ser compatível"), true); };
 
@@ -232,7 +294,18 @@ function desenhar() {
   grupo.clear();
   for (const r of resultado) {
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(r.tri, 3)); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: cores[modelo.id + r.parte], roughness: 0.55, metalness: 0.05 }));
+    let mat = new THREE.MeshStandardMaterial({ color: cores[modelo.id + r.parte], roughness: 0.55, metalness: 0.05 });
+    if (r.parte === "litofania" && document.querySelector('[data-campo="previa_luz"]')?.checked) {
+      const pos = r.tri, col = new Float32Array(pos.length);
+      for (let i = 0; i < pos.length; i += 3) {
+        const x = pos[i], y = pos[i + 1], z = pos[i + 2];
+        const esp = r.formato === "curva" ? Math.hypot(x, y - r.raio) - r.raio : r.formato === "cilindro" ? Math.hypot(x, y) - r.raio : z;
+        const luz = Math.max(0.05, Math.min(1, Math.exp(-1.3 * (esp - (r.tmin || 0.8)))));
+        col[i] = luz; col[i + 1] = luz * 0.9; col[i + 2] = luz * 0.68;      // tom quente de luminária
+      }
+      g.setAttribute("color", new THREE.BufferAttribute(col, 3)); mat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    }
+    const m = new THREE.Mesh(g, mat);
     m.position.y = r.dy; m.userData.parte = r.parte; grupo.add(m);
   }
 }
@@ -250,7 +323,7 @@ function montarBarra() {
     return el("span", { className: "parte" }, cor, r.nome, stl);
   });
   const b3 = el("button", { type: "button", className: "btn", textContent: "Baixar 3MF (multicor)", style: "width:auto;padding:10px 18px" });
-  b3.onclick = () => baixar(make3mf(resultado.map((r) => ({ nome: r.nome, cor: cores[modelo.id + r.parte], tri: r.tri, dy: r.dy })), !!modelo.separadas), `${nomeArquivo()}.3mf`);
+  b3.onclick = () => baixar(make3mf(resultado.map((r, i) => ({ nome: r.nome, cor: cores[modelo.id + r.parte], tri: r.tri, dy: r.dy, solta: r.solta || (i === 0 && !!modelo.separadas && !modelo.separaPartes) }))), `${nomeArquivo()}.3mf`);
   $("barra").replaceChildren(...itens, el("span", { className: "esp" }), b3);
 }
 

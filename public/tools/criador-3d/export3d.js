@@ -28,8 +28,9 @@ function zip(files) {   // files: [{ name, data: Uint8Array }]
   return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: "model/3mf" });
 }
 
-// partes: [{ nome, cor:"#rrggbb", tri: Float32Array, dy: deslocamento Y }], separadas: cada parte vira um objeto próprio
-export function make3mf(partes, separadas) {
+// partes: [{ nome, cor:"#rrggbb", tri: Float32Array, dy: deslocamento Y, solta: impressa separada }]
+// As partes "juntas" viram UMA peça com várias partes (multicor); as "soltas" viram peças próprias.
+export function make3mf(partes) {
   const fmt = (v) => (Math.round(v * 1000) / 1000).toString();
   let objs = ""; let id = 1; const ids = [];
   const mats = partes.map((p) => `<base name="${p.nome}" displaycolor="${p.cor.toUpperCase()}FF"/>`).join("");
@@ -48,9 +49,10 @@ export function make3mf(partes, separadas) {
     objs += `<object id="${id}" name="${p.nome}" type="model" pid="100" pindex="${idx}"><mesh><vertices>${verts.join("")}</vertices><triangles>${tris.join("")}</triangles></mesh></object>`;
     ids.push(id++);
   });
-  let build;
-  if (separadas) build = ids.map((i) => `<item objectid="${i}"/>`).join("");
-  else { objs += `<object id="${id}" name="Peça" type="model"><components>${ids.map((i) => `<component objectid="${i}"/>`).join("")}</components></object>`; build = `<item objectid="${id}"/>`; }
+  const juntas = ids.filter((_, k) => !partes[k].solta), soltas = ids.filter((_, k) => partes[k].solta);
+  let build = soltas.map((i) => `<item objectid="${i}"/>`).join("");
+  if (juntas.length === 1) build = `<item objectid="${juntas[0]}"/>` + build;
+  else if (juntas.length > 1) { objs += `<object id="${id}" name="Peça" type="model"><components>${juntas.map((i) => `<component objectid="${i}"/>`).join("")}</components></object>`; build = `<item objectid="${id}"/>` + build; }
   const model = `<?xml version="1.0" encoding="UTF-8"?>
 <model unit="millimeter" xml:lang="pt-BR" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
 <metadata name="Application">Multiferramenta 3D — Criador 3D</metadata>

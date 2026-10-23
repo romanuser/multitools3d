@@ -18,7 +18,7 @@ async function font(file) {
 }
 
 self.onmessage = async ({ data }) => {
-  const { id, modelo, params, partes, fontes } = data;
+  const { id, modelo, params, partes, fontes, arquivos = [] } = data;   // arquivos: [{ nome, dados }] (ex.: a placa da litofania)
   try {
     const src = await (await fetch(`modelos/${modelo}.scad`)).text();
     const files = await Promise.all(fontes.map(async (f) => [f, await font(f)]));
@@ -31,6 +31,7 @@ self.onmessage = async ({ data }) => {
       try { inst.FS.mkdir("/fonts"); } catch { /* já existe */ }
       let uses = "";
       for (const [f, bytes] of files) { inst.FS.writeFile(`/fonts/${f}`, bytes); uses += `use </fonts/${f}>\n`; }
+      for (const a of arquivos) inst.FS.writeFile("/" + a.nome, new Uint8Array(a.dados));
       inst.FS.writeFile("/m.scad", uses + src);
       const defs = Object.entries({ ...params, parte }).flatMap(([k, v]) => ["-D", `${k}=${lit(v)}`]);
       const t = performance.now();

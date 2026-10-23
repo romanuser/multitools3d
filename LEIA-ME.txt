@@ -1,9 +1,9 @@
-MULTIFERRAMENTA 3D — ATUALIZAÇÃO ÚNICA: Criador 3D (14 modelos) + Google (SEO) + E-mails de boas-vindas
+MULTIFERRAMENTA 3D — ATUALIZAÇÃO ÚNICA: Criador 3D (17 modelos) + Google (SEO) + E-mails de boas-vindas
 
-Criador 3D: letreiro LED, chaveiro com nome, porta-copos, topo de bolo, placa Pix, LITOFANIA,
-CHAVEIRO DE LOGOMARCA, CORTADOR DE BISCOITO, CARIMBO, PLACA DE WI-FI, TAG DE PET,
-PLAQUINHA DE PORTA, AMOSTRA DE FILAMENTO e CAIXA COM TAMPA.
-Feito em cima do código que você mandou (src, public, netlify). Testado com build de produção.
+Criador 3D (17 modelos): letreiro LED, chaveiro com nome, porta-copos, topo de bolo, placa Pix (parede,
+balcão com pé e compacta), LITOFANIA (plana, curva, cilindro 360°, coração, círculo, com base/luminária),
+CHAVEIRO DE LITOFANIA, MEDALHA, TROFÉU, CRACHÁ, POLIA, SUPORTE EM L / CANTONEIRA / MÃO FRANCESA,
+TAMPA DE REPOSIÇÃO, cortador de biscoito, tag de pet, plaquinha de porta e caixa com tampa.
 
 1) COPIE as pastas "src", "public" e "netlify" deste zip por cima das do repositório
    (substitua tudo quando o Windows perguntar). Nada seu foi apagado: só foram
@@ -19,7 +19,7 @@ Feito em cima do código que você mandou (src, public, netlify). Testado com bu
 4) git add -A → git commit -m "criador 3d, google e emails" → git push
 
 5) CONFERIR depois do deploy:
-   - Menu → "Criador 3D" (teste a litofania e o chaveiro de logo com uma imagem sua)
+   - Menu → "Criador 3D" (teste a litofania e o chaveiro de litofania com uma foto sua)
    - https://multiferramenta3d.com/sitemap.xml   e   /robots.txt
    - Teste dos e-mails (não envia, só mostra quem receberia):
      https://multiferramenta3d.com/api/cron/onboarding?secret=nEC2zc1jYT3ZNhERkO9OPODneb_Fh7Lb&dry=1
