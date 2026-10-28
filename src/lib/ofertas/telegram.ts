@@ -3,7 +3,7 @@ const api = (metodo: string) => `https://api.telegram.org/bot${process.env.TELEG
 export const telegramConfigurado = () => !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CANAL);
 
 async function chamar(metodo: string, corpo: Record<string, unknown>) {
-  const r = await fetch(api(metodo), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+  const r = await fetch(api(metodo), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(8000) });
   const j = await r.json().catch(() => ({}));
   if (!j.ok) throw new Error(`Telegram (${metodo}): ${j.description || r.status}`);
   return j.result;
