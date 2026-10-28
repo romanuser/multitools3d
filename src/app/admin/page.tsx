@@ -49,6 +49,9 @@ export default async function AdminPage({
             <Link href="/admin/suporte" className="text-sm text-amber hover:underline">
               Chamados de suporte{openTickets ? ` (${openTickets} precisam de você)` : ""} →
             </Link>
+            <Link href="/admin/ofertas" className="text-sm text-amber hover:underline">
+              Caçador de promoções (Telegram / WhatsApp) →
+            </Link>
             <Link href="/admin/stl-packs" className="text-sm text-amber hover:underline">
               Gerenciar pacote de STLs →
             </Link>
