@@ -17,6 +17,7 @@ export function combina(item: Pick<Item, "titulo" | "preco" | "novo">, b: Busca)
   const t = norm(item.titulo);
   const palavras = (lista: string[]) => lista.some((p) => new RegExp(`(^|[^a-z0-9])${norm(p)}`).test(t));
   if (!palavras(b.obrigatorias)) return false;
+  if (b.exigidas?.length && !b.exigidas.every((p) => palavras([p]))) return false;
   if (b.proibidas && palavras(b.proibidas)) return false;
   if (b.precoMin != null && item.preco < b.precoMin) return false;
   if (b.precoMax != null && item.preco > b.precoMax) return false;
