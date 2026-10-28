@@ -37,6 +37,10 @@ export async function rodar(d: Deps) {
   const buscarFn = d.buscarFn ?? buscar, renovarFn = d.renovarFn ?? renovar;
   const postarFn = d.postarFn ?? postarOferta, avisarFn = d.avisarFn ?? avisarAdmin, telegramOk = d.telegramOk ?? telegramConfigurado;
   const erros: string[] = [];
+  // Trava: sem o link de afiliado configurado, só observa (nunca publica link sem a sua comissão)
+  const semAfiliado = !process.env.ML_AFILIADO_PARAMS?.trim();
+  const publicar = d.publicar && !semAfiliado;
+  if (d.publicar && semAfiliado) erros.push("Sem ML_AFILIADO_PARAMS: só observando preços, nada é publicado até configurar o link de afiliado.");
 
   // 1) acesso ao Mercado Livre (renova sozinho quando está pra vencer)
   let tk = await d.db.token();
@@ -85,7 +89,7 @@ export async function rodar(d: Deps) {
 
   // 5) publica as melhores (com limites por rodada e por dia)
   let publicadas = 0;
-  if (d.publicar) {
+  if (publicar) {
     const restanteDia = REGRAS.maxPorDia - (await d.db.publicadasHoje());
     const limite = Math.max(0, Math.min(REGRAS.maxPorRodada, restanteDia));
     for (const a of achados) {
@@ -105,6 +109,6 @@ export async function rodar(d: Deps) {
 
   await d.db.limparAntigos();
   const resumo = { buscas: buscas.map((b) => b.id), lidos, relevantes: ids.length, ofertas: achados.length, publicadas, erros, ms: Date.now() - t0 };
-  await d.db.registrarExecucao({ ...resumo, publicar: d.publicar });
+  await d.db.registrarExecucao({ ...resumo, publicar });
   return { ...resumo, achados: achados.map((a) => ({ id: a.item.id, titulo: a.item.titulo, preco: a.item.preco, desconto: Math.round(a.aval.desconto * 100), motivo: a.aval.motivo, busca: a.busca.id, publicada: !!a.publicada, motivoNao: a.motivoNao ?? null, link: a.link })) };
 }
