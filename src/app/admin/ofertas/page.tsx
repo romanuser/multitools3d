@@ -42,7 +42,7 @@ export default async function AdminOfertas({ searchParams }: { searchParams: Pro
         {ml_erro && <p className="rounded-xl border border-amber/50 bg-amber/10 px-4 py-3 text-sm text-ink">⚠️ {ml_erro}</p>}
         <div className="grid gap-3 sm:grid-cols-2">
           <StatusItem ok={env.ml} nome="App do Mercado Livre" dica={env.ml ? "ML_CLIENT_ID e ML_CLIENT_SECRET configurados." : "Falta ML_CLIENT_ID e ML_CLIENT_SECRET na Netlify."} />
-          <StatusItem ok={!!tk} nome="Conta do Mercado Livre conectada" dica={tk ? `Acesso renovado em ${new Date(tk.atualizado_em).toLocaleString("pt-BR")} (renova sozinho).` : "Clique em “Conectar Mercado Livre” abaixo."} />
+          <StatusItem ok={!!tk} nome="Conta do Mercado Livre conectada" dica={tk ? `Acesso renovado em ${new Date(tk.atualizado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (renova sozinho).` : "Clique em “Conectar Mercado Livre” abaixo."} />
           <StatusItem ok={env.afiliado} nome="Link de afiliado" dica={env.afiliado ? "ML_AFILIADO_PARAMS configurado." : "Falta ML_AFILIADO_PARAMS (os parâmetros do seu link do portal)."} />
           <StatusItem ok={env.telegram} nome="Canal do Telegram" dica={env.telegram ? "Bot e canal configurados." : "Falta TELEGRAM_BOT_TOKEN e TELEGRAM_CANAL."} />
           <StatusItem ok={env.admin} nome="Mensagens do WhatsApp pra você" dica={env.admin ? "Você recebe cada oferta pronta no seu Telegram." : "Falta TELEGRAM_ADMIN_CHAT (use “Descobrir meu chat” abaixo)."} />
@@ -54,7 +54,7 @@ export default async function AdminOfertas({ searchParams }: { searchParams: Pro
           <div className="rounded-2xl border border-line overflow-hidden text-xs">
             {(execs ?? []).map((e, i) => { const r = (e.resumo ?? {}) as { lidos?: number; relevantes?: number; ofertas?: number; publicadas?: number; erros?: string[]; publicar?: boolean };
               return (<div key={i} className="px-4 py-2.5 border-b border-line last:border-b-0 flex flex-wrap gap-x-4 gap-y-1 text-ink-muted">
-                <span className="text-ink">{new Date(e.em).toLocaleString("pt-BR")}</span><span>{r.publicar ? "publicação" : "teste"}</span>
+                <span className="text-ink">{new Date(e.em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span><span>{r.publicar ? "publicação" : "teste"}</span>
                 <span>{r.lidos ?? 0} lidos</span><span>{r.relevantes ?? 0} relevantes</span><span>{r.ofertas ?? 0} ofertas</span><span className="text-ink">{r.publicadas ?? 0} publicadas</span>
                 {r.erros?.length ? <span className="text-amber">⚠️ {r.erros[0]}</span> : null}
               </div>); })}
@@ -68,7 +68,7 @@ export default async function AdminOfertas({ searchParams }: { searchParams: Pro
               return (<div key={p.id} className="rounded-xl border border-line bg-surface px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm text-ink truncate">{it?.titulo ?? p.item_id}</p>
-                  <p className="text-xs text-ink-muted">{brl(Number(p.preco))} · −{Math.round(Number(p.desconto) * 100)}% · {p.motivo} · {new Date(p.publicado_em).toLocaleString("pt-BR")} {p.telegram_ok ? "· ✅ Telegram" : p.erro ? `· ⚠️ ${p.erro}` : ""}</p>
+                  <p className="text-xs text-ink-muted">{brl(Number(p.preco))} · −{Math.round(Number(p.desconto) * 100)}% · {p.motivo} · {new Date(p.publicado_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} {p.telegram_ok ? "· ✅ Telegram" : p.erro ? `· ⚠️ ${p.erro}` : ""}</p>
                 </div>
                 {p.mensagem_wa && <a href={`https://wa.me/?text=${encodeURIComponent(p.mensagem_wa)}`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-full bg-amber px-4 py-1.5 text-xs font-medium text-white">📲 Enviar no WhatsApp</a>}
               </div>); })}

@@ -35,7 +35,7 @@ export default async function SuportePage({ searchParams }: { searchParams: Prom
         </p>
         <p className="text-xs text-ink-muted">
           <span className="font-spec">{ticketNumber(t.number)}</span> · {categoryLabel(t.category)} ·{" "}
-          {new Date(t.last_message_at).toLocaleDateString("pt-BR")}
+          {new Date(t.last_message_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">

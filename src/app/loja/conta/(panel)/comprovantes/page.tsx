@@ -47,7 +47,7 @@ export default async function ComprovantesPage() {
               <div>
                 <p className="text-sm text-ink font-medium">{storeName(order.account_id)}</p>
                 <p className="text-xs text-ink-muted">
-                  #{receiptNumber(order.id)} · {new Date(order.created_at).toLocaleDateString("pt-BR")}
+                  #{receiptNumber(order.id)} · {new Date(order.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
                 </p>
               </div>
               <p className="font-spec text-sm text-ink">{money(order.total)}</p>

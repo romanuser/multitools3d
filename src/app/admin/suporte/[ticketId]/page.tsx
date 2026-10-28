@@ -72,10 +72,10 @@ export default async function AdminChamadoPage({ params }: { params: Promise<{ t
               {account?.email && <p className="text-ink-muted text-xs break-all">{account.email}</p>}
               <p className="text-xs text-ink-muted mt-1">
                 Plano {PLAN[account?.plan ?? "free"] ?? account?.plan}
-                {account?.plan_expires_at ? ` · até ${new Date(account.plan_expires_at).toLocaleDateString("pt-BR")}` : ""}
+                {account?.plan_expires_at ? ` · até ${new Date(account.plan_expires_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : ""}
               </p>
               {account?.created_at && (
-                <p className="text-xs text-ink-muted">Cliente desde {new Date(account.created_at).toLocaleDateString("pt-BR")}</p>
+                <p className="text-xs text-ink-muted">Cliente desde {new Date(account.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
               )}
             </div>
             <div className="flex flex-col gap-2">

@@ -37,7 +37,7 @@ export default async function PlanoPage({
         <p className="text-sm text-ink-muted mb-6">
           Plano atual: <span className="text-ink font-medium">{PLAN_NAMES[plan]}</span>
           {plan === "vip_mensal" && plan_expires_at && (
-            <> · renova em {new Date(plan_expires_at).toLocaleDateString("pt-BR")}</>
+            <> · renova em {new Date(plan_expires_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</>
           )}
         </p>
 

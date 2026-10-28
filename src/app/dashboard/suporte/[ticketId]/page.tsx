@@ -40,7 +40,7 @@ export default async function ChamadoPage({ params }: { params: Promise<{ ticket
         </div>
         <p className="text-xs text-ink-muted mb-6">
           <span className="font-spec">{ticketNumber(ticket.number)}</span> · {categoryLabel(ticket.category)} · aberto em{" "}
-          {new Date(ticket.created_at).toLocaleDateString("pt-BR")}
+          {new Date(ticket.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
         </p>
 
         <div className="border border-line bg-surface rounded-2xl px-4 pt-4 pb-3 mb-4">

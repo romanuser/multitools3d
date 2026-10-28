@@ -74,7 +74,7 @@ export default async function ContaPage() {
                   <div>
                     <p className="text-sm font-medium text-ink">{storeName(order.account_id)}</p>
                     <p className="text-xs text-ink-muted">
-                      {new Date(order.created_at).toLocaleDateString("pt-BR")}
+                      {new Date(order.created_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
                     </p>
                   </div>
                   <p className="text-sm font-spec text-ink">{money(order.total)}</p>
