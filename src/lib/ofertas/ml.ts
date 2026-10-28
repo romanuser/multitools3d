@@ -64,33 +64,44 @@ async function getML<T>(accessToken: string, caminho: string, ms = 7000): Promis
 // 1) /products/search acha os produtos do catálogo pelo termo
 // 2) /products/{id} traz o "vencedor da compra" (melhor oferta entre os vendedores): preço, frete, Full
 // ---------------------------------------------------------------------
-type ProdutoBusca = { id: string; name?: string; status?: string; pictures?: { url?: string; secure_url?: string }[] };
-type Vencedor = { item_id?: string; price?: number; original_price?: number | null; shipping?: { free_shipping?: boolean; logistic_type?: string }; official_store_id?: number | null; condition?: string };
-type Produto = ProdutoBusca & { permalink?: string; buy_box_winner?: Vencedor | null };
+type ProdutoBusca = { id: string; name?: string; status?: string; permalink?: string; pictures?: { url?: string; secure_url?: string }[] };
+// Oferta de um vendedor dentro do produto do catálogo (/products/{id}/items)
+type Oferta = { item_id?: string; price?: number; original_price?: number | null; condition?: string; official_store_id?: number | null; shipping?: { free_shipping?: boolean; logistic_type?: string } };
 
-export function converterProduto(p: Produto): Item | null {
-  const v = p.buy_box_winner;
-  if (!v?.price || !p.name) return null;                              // sem oferta ativa agora
-  const foto = p.pictures?.[0]?.secure_url || p.pictures?.[0]?.url || null;
+const fotoDe = (p: ProdutoBusca) => { const f = p.pictures?.[0]?.secure_url || p.pictures?.[0]?.url; return f ? f.replace(/^http:/, "https:") : null; };
+
+// Melhor oferta do produto: a mais barata entre as de produto NOVO
+export function melhorOferta(p: ProdutoBusca, ofertas: Oferta[]): Item | null {
+  const validas = ofertas.filter((o) => o.price && o.price > 0 && (o.condition ?? "new") === "new");
+  if (!validas.length || !p.name) return null;
+  const o = validas.reduce((m, x) => (x.price! < m.price! ? x : m));
   return {
-    id: p.id, titulo: p.name, preco: Number(v.price), precoOriginal: v.original_price ? Number(v.original_price) : null,
-    permalink: p.permalink || `https://www.mercadolivre.com.br/p/${p.id}`, thumb: foto ? foto.replace(/^http:/, "https:") : null,
-    freteGratis: !!v.shipping?.free_shipping, full: v.shipping?.logistic_type === "fulfillment",
-    novo: (v.condition ?? "new") === "new", lojaOficial: v.official_store_id != null,
+    id: p.id, titulo: p.name, preco: Number(o.price), precoOriginal: o.original_price ? Number(o.original_price) : null,
+    permalink: p.permalink || `https://www.mercadolivre.com.br/p/${p.id}`, thumb: fotoDe(p),
+    freteGratis: !!o.shipping?.free_shipping, full: o.shipping?.logistic_type === "fulfillment", novo: true, lojaOficial: o.official_store_id != null,
   };
 }
 
-export async function buscar(accessToken: string, termo: string, limite = 12): Promise<Item[]> {
+async function ofertasDoProduto(accessToken: string, id: string) {
+  try { return (await getML<{ results?: Oferta[] }>(accessToken, `/products/${id}/items`)).results ?? []; }
+  catch (e) { if (e instanceof ErroML && e.status === 404) return []; throw e; }      // 404 = produto sem vendedores agora
+}
+
+export async function buscar(accessToken: string, termo: string, limite = 10): Promise<Item[]> {
   let busca: { results?: ProdutoBusca[] };
   try { busca = await getML(accessToken, `/products/search?${new URLSearchParams({ status: "active", site_id: "MLB", q: termo, limit: String(limite) })}`); }
   catch (e) { const err = e as ErroML; throw new ErroML(`Busca "${termo}": ${err.message}`, err.status); }
-  const ids = (busca.results ?? []).filter((r) => r?.id && (r.status ?? "active") === "active").map((r) => r.id).slice(0, limite);
-  const detalhes = await Promise.allSettled(ids.map((id) => getML<Produto>(accessToken, `/products/${id}`)));
-  const itens: Item[] = [];
-  for (const d of detalhes) if (d.status === "fulfilled") { const it = converterProduto(d.value); if (it) itens.push(it); }
-  // se TODOS os detalhes falharam com 401, propaga (renova o acesso e tenta de novo)
-  const falhas = detalhes.filter((d) => d.status === "rejected") as PromiseRejectedResult[];
-  if (ids.length && falhas.length === ids.length && falhas[0].reason instanceof ErroML) { const e = falhas[0].reason as ErroML; throw new ErroML(`Busca "${termo}" (detalhes): ${e.message}`, e.status); }
+  const produtos = (busca.results ?? []).filter((r) => r?.id && (r.status ?? "active") === "active").slice(0, limite);
+  const res = await Promise.allSettled(produtos.map(async (p) => {
+    // a busca às vezes não traz nome/foto: aí pega o detalhe do produto
+    const base = p.name ? p : { ...p, ...(await getML<ProdutoBusca>(accessToken, `/products/${p.id}`)) };
+    return melhorOferta(base, await ofertasDoProduto(accessToken, p.id));
+  }));
+  const itens = res.flatMap((r) => (r.status === "fulfilled" && r.value ? [r.value] : []));
+  const falhas = res.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
+  if (produtos.length && falhas.length === produtos.length && falhas[0].reason instanceof ErroML) {
+    const e = falhas[0].reason as ErroML; throw new ErroML(`Busca "${termo}" (ofertas): ${e.message}`, e.status);
+  }
   return itens;
 }
 
@@ -99,7 +110,7 @@ export async function diagnostico(accessToken: string) {
   const testes: [string, string][] = [
     ["Sua conta (/users/me)", "/users/me"],
     ["Busca aberta (/sites/MLB/search)", "/sites/MLB/search?q=filamento&limit=1"],
-    ["Busca no catálogo (/products/search)", "/products/search?status=active&site_id=MLB&q=filamento%20pla&limit=1"],
+    ["Busca no catálogo (/products/search)", "/products/search?status=active&site_id=MLB&q=filamento%20pla%201kg&limit=3"],
   ];
   const out: { nome: string; ok: boolean; detalhe: string }[] = [];
   let produto: string | null = null;
@@ -111,9 +122,16 @@ export async function diagnostico(accessToken: string) {
     } catch (e) { out.push({ nome, ok: false, detalhe: (e as Error).message }); }
   }
   if (produto) {
-    try { const p = await getML<Produto>(accessToken, `/products/${produto}`); const it = converterProduto(p);
-      out.push({ nome: "Detalhe do produto (/products/{id})", ok: !!it, detalhe: it ? `${it.titulo.slice(0, 50)} — R$ ${it.preco}` : "sem oferta ativa nesse produto" }); }
-    catch (e) { out.push({ nome: "Detalhe do produto (/products/{id})", ok: false, detalhe: (e as Error).message }); }
+    try {
+      const det = await getML<Record<string, unknown>>(accessToken, `/products/${produto}`);
+      out.push({ nome: "Detalhe do produto (/products/{id})", ok: true, detalhe: `${String(det.name ?? "").slice(0, 45)} · campos: ${Object.keys(det).slice(0, 12).join(", ")}` });
+    } catch (e) { out.push({ nome: "Detalhe do produto (/products/{id})", ok: false, detalhe: (e as Error).message }); }
+    try {
+      const of = await ofertasDoProduto(accessToken, produto);
+      const precos = of.filter((o) => o.price && (o.condition ?? "new") === "new").map((o) => o.price!).sort((x, y) => x - y);
+      out.push({ nome: "Ofertas do produto (/products/{id}/items)", ok: precos.length > 0,
+        detalhe: precos.length ? `${of.length} vendedor(es), menor preço (novo) R$ ${precos[0].toFixed(2).replace(".", ",")}` : "nenhum vendedor com preço nesse produto agora" });
+    } catch (e) { out.push({ nome: "Ofertas do produto (/products/{id}/items)", ok: false, detalhe: (e as Error).message }); }
   }
   return out;
 }
