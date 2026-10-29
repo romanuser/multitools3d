@@ -9,11 +9,11 @@ export function PainelOfertas({ conectado }: { conectado: boolean }) {
   const [erro, setErro] = useState<string | null>(null);
   const [chats, setChats] = useState<{ id: string; nome: string }[] | null>(null);
   const [diag, setDiag] = useState<{ nome: string; ok: boolean; detalhe: string }[] | null>(null);
-  const rodar = async (publicar: boolean) => {
+  const rodar = async (publicar: boolean, soFilamentos = false) => {
     if (publicar && !confirm("Publicar as ofertas encontradas agora no canal?")) return;
-    setBusy(publicar ? "pub" : "teste"); setErro(null); setRes(null);
+    setBusy(publicar ? "pub" : soFilamentos ? "fil" : "teste"); setErro(null); setRes(null);
     try {
-      const r = await rodarAgora(publicar);
+      const r = await rodarAgora(publicar, soFilamentos);
       if (r.erro) setErro(r.erro); else setRes(r.ok!);
     } catch {
       setErro("O servidor demorou demais ou caiu no meio. Atualize a página e veja “Últimas rodadas”; se repetir, me mande o print.");
@@ -24,6 +24,7 @@ export function PainelOfertas({ conectado }: { conectado: boolean }) {
       <div className="flex flex-wrap gap-2">
         <a href="/api/ofertas/ml/conectar" className="rounded-full bg-amber px-5 py-2 text-sm font-medium text-white">{conectado ? "Reconectar Mercado Livre" : "Conectar Mercado Livre"}</a>
         <button type="button" disabled={!!busy || !conectado} onClick={() => rodar(false)} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">{busy === "teste" ? "Buscando (até ~15 s)…" : "Testar agora (não publica)"}</button>
+        <button type="button" disabled={!!busy || !conectado} onClick={() => rodar(false, true)} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">{busy === "fil" ? "Buscando filamentos…" : "Testar filamentos"}</button>
         <button type="button" disabled={!!busy || !conectado} onClick={() => rodar(true)} className="rounded-full border border-amber px-5 py-2 text-sm text-amber disabled:opacity-50">{busy === "pub" ? "Publicando…" : "Rodar e publicar"}</button>
         <button type="button" disabled={!!busy || !conectado} onClick={async () => { setBusy("diag"); setErro(null); try { const r = await diagnosticoML(); if (r.erro) setErro(r.erro); else setDiag(r.itens!); } catch { setErro("O diagnóstico não respondeu. Atualize a página e tente de novo."); } finally { setBusy(null); } }} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">{busy === "diag" ? "Testando a API…" : "Diagnóstico da API"}</button>
         <button type="button" disabled={!!busy} onClick={async () => { setBusy("chat"); try { const r = await descobrirChats(); if (r.erro) setErro(r.erro); else setChats(r.chats!); } catch { setErro("Não consegui falar com o Telegram agora."); } finally { setBusy(null); } }} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">Descobrir meu chat do Telegram</button>
@@ -51,6 +52,23 @@ export function PainelOfertas({ conectado }: { conectado: boolean }) {
             ))}
             {!res.achados.length && <li>Nenhuma oferta de verdade agora{res.relevantes ? " (ou o bot ainda está montando o histórico de preços)" : ""}.</li>}
           </ul>
+          <details className="mt-3" open>
+            <summary className="cursor-pointer text-xs font-medium text-ink">Mais baratos que o bot enxergou (pra conferir)</summary>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              {res.vistos.map((v) => (
+                <div key={v.busca} className="rounded-xl border border-line px-3 py-2 text-xs">
+                  <p className="font-medium text-ink">{v.busca}{v.alvo ? ` · alvo até R$ ${v.alvo}` : ""}</p>
+                  {v.itens.length ? (
+                    <ul className="mt-1 space-y-0.5 text-ink-muted">
+                      {v.itens.map((i, k) => (
+                        <li key={k}>R$ {i.preco.toFixed(2).replace(".", ",")} · {i.umKg ? "1 kg" : "não é 1 kg"} · {i.titulo.slice(0, 60)}</li>
+                      ))}
+                    </ul>
+                  ) : <p className="mt-1 text-ink-muted">nada relevante no catálogo agora</p>}
+                </div>
+              ))}
+            </div>
+          </details>
         </div>
       )}
     </section>

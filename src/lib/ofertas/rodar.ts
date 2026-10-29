@@ -3,7 +3,7 @@
 // O banco entra por parâmetro (Db) pra dar pra testar sem Supabase.
 // ---------------------------------------------------------------------
 import { BUSCAS, REGRAS, type Busca } from "./config";
-import { avaliar, combina, linkAfiliado, mensagemTelegram, mensagemWhatsApp, podeRepublicar, type Item, type Leitura, type Avaliacao } from "./regras";
+import { avaliar, combina, ehUmKg, linkAfiliado, mensagemTelegram, mensagemWhatsApp, podeRepublicar, type Item, type Leitura, type Avaliacao } from "./regras";
 import { buscar, renovar, ErroML, type TokenML } from "./ml";
 import { avisarAdmin, postarOferta, telegramConfigurado } from "./telegram";
 
@@ -20,7 +20,7 @@ export interface Db {
   limparAntigos(): Promise<void>;
 }
 export type Deps = {
-  db: Db; agora?: number; publicar: boolean; todas?: boolean;
+  db: Db; agora?: number; publicar: boolean; todas?: boolean; ids?: string[];   // ids: testar só essas buscas
   buscarFn?: typeof buscar; renovarFn?: typeof renovar;
   postarFn?: typeof postarOferta; avisarFn?: typeof avisarAdmin; telegramOk?: () => boolean;
 };
@@ -48,7 +48,7 @@ export async function rodar(d: Deps) {
   if (Date.parse(tk.expira_em) - agora < 10 * 60e3) { tk = await renovarFn(tk.refresh_token); await d.db.salvarToken(tk); }
 
   // 2) busca (em paralelo) e filtro por título/preço
-  const buscas = buscasDaRodada(agora, d.todas);
+  const buscas = d.ids?.length ? BUSCAS.filter((b) => d.ids!.includes(b.id)) : buscasDaRodada(agora, d.todas);
   // Se o acesso vencer no meio, as buscas (em paralelo) esperam UMA renovação só e tentam de novo.
   let renovacao: Promise<TokenML> | null = null;
   const buscarComRenovacao = async (b: Busca): Promise<Item[]> => {
@@ -70,6 +70,12 @@ export async function rodar(d: Deps) {
     for (const item of r.value) if (combina(item, buscas[i]) && !porId.has(item.id)) porId.set(item.id, { item, busca: buscas[i] });
   });
   const ids = [...porId.keys()];
+  // pra conferência: os mais baratos que o bot enxergou em cada busca
+  const vistos = buscas.map((b) => ({
+    busca: b.rotulo, alvo: b.alvo ?? null,
+    itens: [...porId.values()].filter((x) => x.busca.id === b.id).map((x) => x.item).sort((a, c) => a.preco - c.preco).slice(0, 4)
+      .map((i) => ({ titulo: i.titulo, preco: i.preco, umKg: ehUmKg(i.titulo) })),
+  }));
 
   // 3) compara com o histórico (ANTES de gravar a leitura de agora)
   const [hist, ultimas] = await Promise.all([d.db.historico(ids), d.db.ultimasPublicacoes(ids)]);
@@ -110,5 +116,5 @@ export async function rodar(d: Deps) {
   await d.db.limparAntigos();
   const resumo = { buscas: buscas.map((b) => b.id), lidos, relevantes: ids.length, ofertas: achados.length, publicadas, erros, ms: Date.now() - t0 };
   await d.db.registrarExecucao({ ...resumo, publicar });
-  return { ...resumo, achados: achados.map((a) => ({ id: a.item.id, titulo: a.item.titulo, preco: a.item.preco, desconto: Math.round(a.aval.desconto * 100), motivo: a.aval.motivo, busca: a.busca.id, publicada: !!a.publicada, motivoNao: a.motivoNao ?? null, link: a.link })) };
+  return { ...resumo, vistos, achados: achados.map((a) => ({ id: a.item.id, titulo: a.item.titulo, preco: a.item.preco, desconto: Math.round(a.aval.desconto * 100), motivo: a.aval.motivo, busca: a.busca.id, publicada: !!a.publicada, motivoNao: a.motivoNao ?? null, link: a.link })) };
 }

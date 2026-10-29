@@ -15,22 +15,26 @@ export type Busca = {
   pesoKg?: boolean;           //   ...só vale pra embalagem de 1 kg (evita carretel de 500 g "barato")
 };
 
+const PECAS = ["filamento", "bico", "nozzle", "hotend", "hot end", "mesa", "capa", "peca", "peça", "suporte", "caneta", "cabo", "correia", "motor", "extrusora", "extrusor", "ventoinha", "cooler", "placa", "sensor", "refil", "bobina", "secador", "adesivo", "termistor", "tubo", "ptfe", "engrenagem", "rolamento", "fonte"];
+
 export const BUSCAS: Busca[] = [
+  // --- filamentos (alvo = preço bom por 1 kg) ---
   { id: "pla", termo: "filamento pla 1kg 1.75", rotulo: "Filamento PLA", obrigatorias: ["pla"], proibidas: ["suporte", "secador", "caixa", "amostra"], alvo: 65, pesoKg: true },
   { id: "petg", termo: "filamento petg 1kg 1.75", rotulo: "Filamento PETG", obrigatorias: ["petg"], proibidas: ["suporte", "secador", "amostra"], alvo: 70, pesoKg: true },
   { id: "abs", termo: "filamento abs 1kg 1.75", rotulo: "Filamento ABS/ASA", obrigatorias: ["abs", "asa"], proibidas: ["suporte", "secador"], alvo: 70, pesoKg: true },
   { id: "tpu", termo: "filamento tpu flexivel", rotulo: "Filamento TPU", obrigatorias: ["tpu", "flex"], proibidas: ["suporte"], alvo: 110, pesoKg: true },
   { id: "silk", termo: "filamento pla silk", rotulo: "Filamento Silk", obrigatorias: ["silk"], proibidas: ["suporte"], alvo: 75, pesoKg: true },
-  { id: "bambu", termo: "bambu lab impressora 3d", rotulo: "Impressora Bambu Lab", obrigatorias: ["bambu"], exigidas: ["impressora"], proibidas: ["filamento", "bico", "nozzle", "hotend", "hot end", "mesa", "capa", "peca", "peça", "suporte", "caneta", "cabo", "correia", "motor", "extrusora", "extrusor", "ventoinha", "cooler", "placa", "sensor", "refil", "bobina", "secador", "adesivo", "termistor", "tubo", "ptfe", "engrenagem", "rolamento", "fonte"] },
-  { id: "creality", termo: "impressora 3d creality", rotulo: "Impressora Creality", obrigatorias: ["creality"], exigidas: ["impressora"], proibidas: ["filamento", "bico", "nozzle", "hotend", "hot end", "mesa", "capa", "peca", "peça", "suporte", "caneta", "cabo", "correia", "motor", "extrusora", "extrusor", "ventoinha", "cooler", "placa", "sensor", "refil", "bobina", "secador", "adesivo", "termistor", "tubo", "ptfe", "engrenagem", "rolamento", "fonte"] },
+  { id: "pla2", termo: "filamento pla 1.75mm", rotulo: "Filamento PLA", obrigatorias: ["pla"], proibidas: ["suporte", "secador", "caixa", "amostra"], alvo: 65, pesoKg: true },
+  { id: "petg2", termo: "filamento petg 1.75mm", rotulo: "Filamento PETG", obrigatorias: ["petg"], proibidas: ["suporte", "secador", "amostra"], alvo: 70, pesoKg: true },
+  // --- impressoras (sem alvo por enquanto: publica só por queda de preço) ---
+  { id: "bambu", termo: "bambu lab impressora 3d", rotulo: "Impressora Bambu Lab", obrigatorias: ["bambu"], exigidas: ["impressora"], proibidas: PECAS },
+  { id: "creality", termo: "impressora 3d creality", rotulo: "Impressora Creality", obrigatorias: ["creality"], exigidas: ["impressora"], proibidas: PECAS },
+  { id: "impressora", termo: "impressora 3d", rotulo: "Impressora 3D", obrigatorias: ["impressora 3d", "impressora3d"], proibidas: PECAS },
+  // --- acessórios e insumos ---
   { id: "bico", termo: "bico nozzle impressora 3d", rotulo: "Bicos / hotend", obrigatorias: ["bico", "nozzle", "hotend"] },
   { id: "mesa", termo: "mesa pei impressora 3d", rotulo: "Mesa PEI", obrigatorias: ["pei", "mesa", "placa"], proibidas: ["filamento"] },
   { id: "secador", termo: "secador de filamento", rotulo: "Secador de filamento", obrigatorias: ["secador", "dryer"] },
   { id: "resina", termo: "resina impressora 3d", rotulo: "Resina", obrigatorias: ["resina"], proibidas: ["epoxi", "epóxi", "artesanato"] },
-  // --- impressoras e filamentos (buscas mais amplas) ---
-  { id: "impressora", termo: "impressora 3d", rotulo: "Impressora 3D", obrigatorias: ["impressora 3d", "impressora3d"], proibidas: ["filamento", "bico", "nozzle", "hotend", "hot end", "mesa", "capa", "peca", "peça", "suporte", "caneta", "cabo", "correia", "motor", "extrusora", "extrusor", "ventoinha", "cooler", "placa", "sensor", "refil", "bobina", "secador", "adesivo", "termistor", "tubo", "ptfe", "engrenagem", "rolamento", "fonte"] },
-  { id: "pla2", termo: "filamento pla 1.75mm", rotulo: "Filamento PLA", obrigatorias: ["pla"], proibidas: ["suporte", "secador", "caixa", "amostra"], alvo: 65, pesoKg: true },
-  { id: "petg2", termo: "filamento petg 1.75mm", rotulo: "Filamento PETG", obrigatorias: ["petg"], proibidas: ["suporte", "secador", "amostra"], alvo: 70, pesoKg: true },
   // --- insumos pra quem vende chaveiro e brinde ---
   { id: "nfc", termo: "tag nfc ntag215", rotulo: "Tag NFC", obrigatorias: ["nfc", "ntag"], proibidas: ["leitor", "celular", "capa", "smartphone"] },
   { id: "ziplock", termo: "saco ziplock holografico", rotulo: "Embalagem ziplock holográfica", obrigatorias: ["holograf"], proibidas: ["adesivo", "papel", "vinil", "glitter"] },

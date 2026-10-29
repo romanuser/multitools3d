@@ -10,10 +10,11 @@ import { diagnostico, renovar } from "./ml";
 export type ResultadoRodada = Awaited<ReturnType<typeof rodar>>;
 
 // Botões do painel: "Testar agora" (não publica) e "Rodar e publicar"
-export async function rodarAgora(publicar: boolean): Promise<{ ok?: ResultadoRodada; erro?: string }> {
+export async function rodarAgora(publicar: boolean, soFilamentos = false): Promise<{ ok?: ResultadoRodada; erro?: string }> {
   if (!(await ehAdmin())) return { erro: "Só o administrador." };
-  // 4 buscas por vez (as mesmas da rodada automática): cabe no tempo limite da Netlify
-  try { const r = await rodar({ db: dbSupabase(), publicar }); revalidatePath("/admin/ofertas"); revalidatePath("/ofertas"); return { ok: r }; }
+  // poucas buscas por vez (cabe no tempo limite da Netlify); "Testar filamentos" usa só as de filamento com preço-alvo
+  const ids = soFilamentos ? ["pla", "petg", "abs", "tpu", "silk"] : undefined;
+  try { const r = await rodar({ db: dbSupabase(), publicar, ids }); revalidatePath("/admin/ofertas"); revalidatePath("/ofertas"); return { ok: r }; }
   catch (e) { return { erro: e instanceof Error ? e.message : "erro" }; }
 }
 
