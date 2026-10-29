@@ -24,10 +24,27 @@ export function combina(item: Pick<Item, "titulo" | "preco" | "novo">, b: Busca)
   return true;
 }
 
-export type Avaliacao = { oferta: boolean; motivo: string; desconto: number; deReferencia: number | null; menor30: boolean; pontos: number };
+export type Avaliacao = { oferta: boolean; motivo: string; desconto: number; deReferencia: number | null; menor30: boolean; pontos: number; alvo?: number };
+
+// embalagem de 1 kg? ("1kg", "1 kg", "1,0 kg", "1000g")
+export const ehUmKg = (titulo: string) => /(^|[^0-9.,])1([.,]0+)?\s?kg\b|(^|[^0-9])1000\s?g\b/i.test(titulo);
 
 // É promoção de verdade? Usa o preço riscado do anúncio E/OU o histórico que o bot guardou.
-export function avaliar(item: Item, historico: Leitura[], agora = Date.now()): Avaliacao {
+export function avaliar(item: Item, historico: Leitura[], agora = Date.now(), busca?: Pick<Busca, "alvo" | "pesoKg">): Avaliacao {
+  const r = avaliarQueda(item, historico, agora);
+  // PREÇO-ALVO: preço bom de verdade, mesmo que não tenha caído (ex.: PETG 1 kg até R$ 70)
+  if (!r.oferta && busca?.alvo && item.preco <= busca.alvo && (!busca.pesoKg || ehUmKg(item.titulo))) {
+    const h = historico.filter((x) => x.preco > 0), media = h.length ? h.reduce((s, x) => s + x.preco, 0) / h.length : null;
+    const abaixo = media && media > item.preco ? 1 - item.preco / media : 0;
+    const riscado = item.precoOriginal && item.precoOriginal > item.preco ? 1 - item.preco / item.precoOriginal : 0;
+    const desconto = Math.max(abaixo, riscado), ref = riscado >= abaixo ? (riscado ? item.precoOriginal : null) : media;
+    return { oferta: true, motivo: `preço bom (até R$ ${busca.alvo})`, desconto, deReferencia: desconto >= 0.05 && ref ? Math.round(ref * 100) / 100 : null,
+      menor30: false, alvo: busca.alvo, pontos: ((busca.alvo - item.preco) / busca.alvo) * 100 + (item.freteGratis ? 4 : 0) + (item.full ? 3 : 0) + (item.lojaOficial ? 3 : 0) };
+  }
+  return r;
+}
+
+function avaliarQueda(item: Item, historico: Leitura[], agora: number): Avaliacao {
   const h = historico.filter((x) => agora - Date.parse(x.em) <= 30 * 864e5 && x.preco > 0);
   const dias = new Set(h.map((x) => x.em.slice(0, 10))).size;
   const confiavel = h.length >= REGRAS.historicoMinAmostras && dias >= REGRAS.historicoMinDias;
@@ -78,6 +95,7 @@ export function mensagemTelegram(item: Item, a: Avaliacao, rotulo: string) {
     `🔥 <b>${esc(curto(item.titulo))}</b>`,
     a.deReferencia ? `💸 De <s>${brl(a.deReferencia)}</s> por <b>${brl(item.preco)}</b>  (−${Math.round(a.desconto * 100)}%)` : `💸 Por <b>${brl(item.preco)}</b>`,
     a.menor30 ? "📉 Menor preço dos últimos 30 dias" : null,
+    a.alvo ? `🎯 Preço bom: até R$ ${a.alvo} o kg` : null,
     [item.freteGratis ? "🚚 Frete grátis" : null, item.full ? "⚡ Full" : null, item.lojaOficial ? "🏷️ Loja oficial" : null].filter(Boolean).join("  ·  ") || null,
     `#${rotulo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "")}`,
   ];
@@ -90,6 +108,7 @@ export function mensagemWhatsApp(item: Item, a: Avaliacao, link: string) {
     `🔥 *${curto(item.titulo)}*`,
     a.deReferencia ? `💸 De ~${brl(a.deReferencia)}~ por *${brl(item.preco)}* (−${Math.round(a.desconto * 100)}%)` : `💸 Por *${brl(item.preco)}*`,
     a.menor30 ? "📉 Menor preço dos últimos 30 dias" : null,
+    a.alvo ? `🎯 Preço bom: até R$ ${a.alvo} o kg` : null,
     [item.freteGratis ? "🚚 Frete grátis" : null, item.full ? "⚡ Full" : null].filter(Boolean).join("  ·  ") || null,
     "",
     `👉 ${link}`,

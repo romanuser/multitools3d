@@ -75,7 +75,7 @@ export async function rodar(d: Deps) {
   const [hist, ultimas] = await Promise.all([d.db.historico(ids), d.db.ultimasPublicacoes(ids)]);
   const achados: Achado[] = [];
   for (const { item, busca } of porId.values()) {
-    const aval = avaliar(item, hist.get(item.id) ?? [], agora);
+    const aval = avaliar(item, hist.get(item.id) ?? [], agora, busca);
     if (aval.oferta) achados.push({ item, busca, aval, link: linkAfiliado(item.permalink, process.env.ML_AFILIADO_PARAMS) });
   }
   achados.sort((a, b) => b.aval.pontos - a.aval.pontos);

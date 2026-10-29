@@ -87,7 +87,7 @@ async function ofertasDoProduto(accessToken: string, id: string) {
   catch (e) { if (e instanceof ErroML && e.status === 404) return []; throw e; }      // 404 = produto sem vendedores agora
 }
 
-export async function buscar(accessToken: string, termo: string, limite = 10): Promise<Item[]> {
+export async function buscar(accessToken: string, termo: string, limite = 15): Promise<Item[]> {
   let busca: { results?: ProdutoBusca[] };
   try { busca = await getML(accessToken, `/products/search?${new URLSearchParams({ status: "active", site_id: "MLB", q: termo, limit: String(limite) })}`); }
   catch (e) { const err = e as ErroML; throw new ErroML(`Busca "${termo}": ${err.message}`, err.status); }
