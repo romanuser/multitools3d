@@ -12,8 +12,13 @@ export type Busca = {
   precoMin?: number;          // (opcional, não usado por padrão: preço não separa produto de acessório)
   precoMax?: number;
   alvo?: number;              // PREÇO-ALVO: publica se custar até isso (mesmo sem ter caído)
+  alvos?: Record<string, number>; // ...ou um teto por MATERIAL do título (buscas por marca, que misturam PLA/PETG/Silk…)
   pesoKg?: boolean;           //   ...só vale pra embalagem de 1 kg (evita carretel de 500 g "barato")
 };
+
+// Teto de preço por 1 kg, por material (usado nas buscas por marca)
+export const ALVOS: Record<string, number> = { pla: 65, petg: 70, abs: 70, asa: 70, silk: 75, tpu: 110 };
+const FIL_PROIB = ["suporte", "secador", "caixa", "amostra", "bico", "nozzle", "mesa", "adesivo"];
 
 const PECAS = ["filamento", "bico", "nozzle", "hotend", "hot end", "mesa", "capa", "peca", "peça", "suporte", "caneta", "cabo", "correia", "motor", "extrusora", "extrusor", "ventoinha", "cooler", "placa", "sensor", "refil", "bobina", "secador", "adesivo", "termistor", "tubo", "ptfe", "engrenagem", "rolamento", "fonte"];
 
@@ -26,6 +31,17 @@ export const BUSCAS: Busca[] = [
   { id: "silk", termo: "filamento pla silk", rotulo: "Filamento Silk", obrigatorias: ["silk"], proibidas: ["suporte"], alvo: 75, pesoKg: true },
   { id: "pla2", termo: "filamento pla 1.75mm", rotulo: "Filamento PLA", obrigatorias: ["pla"], proibidas: ["suporte", "secador", "caixa", "amostra"], alvo: 65, pesoKg: true },
   { id: "petg2", termo: "filamento petg 1.75mm", rotulo: "Filamento PETG", obrigatorias: ["petg"], proibidas: ["suporte", "secador", "amostra"], alvo: 70, pesoKg: true },
+  // --- filamentos por MARCA (o catálogo devolve por relevância: buscando a marca, os baratos aparecem) ---
+  { id: "m_masterprint_pla", termo: "filamento masterprint pla", rotulo: "Filamento Masterprint", obrigatorias: ["masterprint"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_masterprint_petg", termo: "filamento masterprint petg", rotulo: "Filamento Masterprint", obrigatorias: ["masterprint"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_voolt", termo: "filamento voolt3d", rotulo: "Filamento Voolt3D", obrigatorias: ["voolt"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_3dfila", termo: "filamento 3d fila", rotulo: "Filamento 3D Fila", obrigatorias: ["3d fila", "3dfila"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_fluion", termo: "filamento fluion", rotulo: "Filamento Fluion", obrigatorias: ["fluion"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_sunlu", termo: "filamento sunlu", rotulo: "Filamento Sunlu", obrigatorias: ["sunlu"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_esun", termo: "filamento esun", rotulo: "Filamento eSun", obrigatorias: ["esun"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_elegoo", termo: "filamento elegoo", rotulo: "Filamento Elegoo", obrigatorias: ["elegoo"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_creality", termo: "filamento creality", rotulo: "Filamento Creality", obrigatorias: ["creality"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
+  { id: "m_hf", termo: "filamento hf outlet", rotulo: "Filamento HF Outlet", obrigatorias: ["outlet"], exigidas: ["filamento"], proibidas: FIL_PROIB, alvos: ALVOS, pesoKg: true },
   // --- impressoras (sem alvo por enquanto: publica só por queda de preço) ---
   { id: "bambu", termo: "bambu lab impressora 3d", rotulo: "Impressora Bambu Lab", obrigatorias: ["bambu"], exigidas: ["impressora"], proibidas: PECAS },
   { id: "creality", termo: "impressora 3d creality", rotulo: "Impressora Creality", obrigatorias: ["creality"], exigidas: ["impressora"], proibidas: PECAS },
@@ -62,5 +78,6 @@ export const REGRAS = {
   diasSemRepetir: 7,
   maxPorRodada: 4,              // máximo de publicações por execução (de hora em hora)
   maxPorDia: 24,
-  buscasPorRodada: 5,           // cada execução cobre só algumas buscas (cabe no tempo da Netlify) — todas em ~4 h
+  buscasPorRodada: 7,           // cada execução cobre só algumas buscas (cabe no tempo da Netlify) — todas em ~4 h
+  buscasEmParalelo: 6,          //   ...em lotes, pra não sobrecarregar a API
 };

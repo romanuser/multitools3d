@@ -26,20 +26,39 @@ export function combina(item: Pick<Item, "titulo" | "preco" | "novo">, b: Busca)
 
 export type Avaliacao = { oferta: boolean; motivo: string; desconto: number; deReferencia: number | null; menor30: boolean; pontos: number; alvo?: number };
 
+// Peso no título: "1kg" (1 kg, 1,0 kg, 1000 g) · "outro" (500 g, 250 g, 3 kg…) · "sem" (não diz o peso)
+export function pesoDe(titulo: string): "1kg" | "outro" | "sem" {
+  if (ehUmKg(titulo)) return "1kg";
+  return /(^|[^0-9.,])\d+([.,]\d+)?\s?(kg|g|gr|gramas|quilo)\b/i.test(titulo) ? "outro" : "sem";
+}
+// Material pelo título (silk antes de pla: silk é PLA; petg antes de pet)
+export function materialDe(titulo: string): string | null {
+  const t = norm(titulo);
+  for (const m of ["silk", "petg", "tpu", "asa", "abs", "pla"]) if (new RegExp(`(^|[^a-z0-9])${m}([^a-z0-9]|$)`).test(t)) return m;
+  return null;
+}
 // embalagem de 1 kg? ("1kg", "1 kg", "1,0 kg", "1000g")
 export const ehUmKg = (titulo: string) => /(^|[^0-9.,])1([.,]0+)?\s?kg\b|(^|[^0-9])1000\s?g\b/i.test(titulo);
 
 // É promoção de verdade? Usa o preço riscado do anúncio E/OU o histórico que o bot guardou.
-export function avaliar(item: Item, historico: Leitura[], agora = Date.now(), busca?: Pick<Busca, "alvo" | "pesoKg">): Avaliacao {
+export function alvoDe(titulo: string, busca?: Pick<Busca, "alvo" | "alvos">) {
+  if (busca?.alvo) return busca.alvo;
+  const m = busca?.alvos ? materialDe(titulo) : null;
+  return m && busca?.alvos ? busca.alvos[m] : undefined;
+}
+
+export function avaliar(item: Item, historico: Leitura[], agora = Date.now(), busca?: Pick<Busca, "alvo" | "alvos" | "pesoKg">): Avaliacao {
   const r = avaliarQueda(item, historico, agora);
-  // PREÇO-ALVO: preço bom de verdade, mesmo que não tenha caído (ex.: PETG 1 kg até R$ 70)
-  if (!r.oferta && busca?.alvo && item.preco <= busca.alvo && (!busca.pesoKg || ehUmKg(item.titulo))) {
+  const teto = alvoDe(item.titulo, busca);
+  // PREÇO-ALVO: preço bom de verdade, mesmo que não tenha caído (ex.: PETG 1 kg até R$ 70).
+  // Peso: aceita 1 kg ou título sem peso (carretel padrão); descarta quando diz outro peso (500 g, 3 kg…)
+  if (!r.oferta && teto && item.preco <= teto && (!busca?.pesoKg || pesoDe(item.titulo) !== "outro")) {
     const h = historico.filter((x) => x.preco > 0), media = h.length ? h.reduce((s, x) => s + x.preco, 0) / h.length : null;
     const abaixo = media && media > item.preco ? 1 - item.preco / media : 0;
     const riscado = item.precoOriginal && item.precoOriginal > item.preco ? 1 - item.preco / item.precoOriginal : 0;
     const desconto = Math.max(abaixo, riscado), ref = riscado >= abaixo ? (riscado ? item.precoOriginal : null) : media;
-    return { oferta: true, motivo: `preço bom (até R$ ${busca.alvo})`, desconto, deReferencia: desconto >= 0.05 && ref ? Math.round(ref * 100) / 100 : null,
-      menor30: false, alvo: busca.alvo, pontos: ((busca.alvo - item.preco) / busca.alvo) * 100 + (item.freteGratis ? 4 : 0) + (item.full ? 3 : 0) + (item.lojaOficial ? 3 : 0) };
+    return { oferta: true, motivo: `preço bom (até R$ ${teto})`, desconto, deReferencia: desconto >= 0.05 && ref ? Math.round(ref * 100) / 100 : null,
+      menor30: false, alvo: teto, pontos: ((teto - item.preco) / teto) * 100 + (item.freteGratis ? 4 : 0) + (item.full ? 3 : 0) + (item.lojaOficial ? 3 : 0) };
   }
   return r;
 }

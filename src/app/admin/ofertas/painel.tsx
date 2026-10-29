@@ -10,8 +10,8 @@ export function PainelOfertas({ conectado }: { conectado: boolean }) {
   const [chats, setChats] = useState<{ id: string; nome: string }[] | null>(null);
   const [diag, setDiag] = useState<{ nome: string; ok: boolean; detalhe: string }[] | null>(null);
   const rodar = async (publicar: boolean, soFilamentos = false) => {
-    if (publicar && !confirm("Publicar as ofertas encontradas agora no canal?")) return;
-    setBusy(publicar ? "pub" : soFilamentos ? "fil" : "teste"); setErro(null); setRes(null);
+    if (publicar && !confirm(soFilamentos ? "Publicar agora as ofertas de filamento no canal?" : "Publicar as ofertas encontradas agora no canal?")) return;
+    setBusy(publicar ? (soFilamentos ? "pubfil" : "pub") : soFilamentos ? "fil" : "teste"); setErro(null); setRes(null);
     try {
       const r = await rodarAgora(publicar, soFilamentos);
       if (r.erro) setErro(r.erro); else setRes(r.ok!);
@@ -25,6 +25,7 @@ export function PainelOfertas({ conectado }: { conectado: boolean }) {
         <a href="/api/ofertas/ml/conectar" className="rounded-full bg-amber px-5 py-2 text-sm font-medium text-white">{conectado ? "Reconectar Mercado Livre" : "Conectar Mercado Livre"}</a>
         <button type="button" disabled={!!busy || !conectado} onClick={() => rodar(false)} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">{busy === "teste" ? "Buscando (até ~15 s)…" : "Testar agora (não publica)"}</button>
         <button type="button" disabled={!!busy || !conectado} onClick={() => rodar(false, true)} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">{busy === "fil" ? "Buscando filamentos…" : "Testar filamentos"}</button>
+        <button type="button" disabled={!!busy || !conectado} onClick={() => rodar(true, true)} className="rounded-full border border-amber px-5 py-2 text-sm text-amber disabled:opacity-50">{busy === "pubfil" ? "Publicando filamentos…" : "Publicar filamentos agora"}</button>
         <button type="button" disabled={!!busy || !conectado} onClick={() => rodar(true)} className="rounded-full border border-amber px-5 py-2 text-sm text-amber disabled:opacity-50">{busy === "pub" ? "Publicando…" : "Rodar e publicar"}</button>
         <button type="button" disabled={!!busy || !conectado} onClick={async () => { setBusy("diag"); setErro(null); try { const r = await diagnosticoML(); if (r.erro) setErro(r.erro); else setDiag(r.itens!); } catch { setErro("O diagnóstico não respondeu. Atualize a página e tente de novo."); } finally { setBusy(null); } }} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">{busy === "diag" ? "Testando a API…" : "Diagnóstico da API"}</button>
         <button type="button" disabled={!!busy} onClick={async () => { setBusy("chat"); try { const r = await descobrirChats(); if (r.erro) setErro(r.erro); else setChats(r.chats!); } catch { setErro("Não consegui falar com o Telegram agora."); } finally { setBusy(null); } }} className="rounded-full border border-line px-5 py-2 text-sm text-ink disabled:opacity-50">Descobrir meu chat do Telegram</button>
@@ -48,7 +49,7 @@ export function PainelOfertas({ conectado }: { conectado: boolean }) {
           {res.erros.length > 0 && <p className="text-amber text-xs mt-1">⚠️ {res.erros.join(" · ")}</p>}
           <ul className="mt-2 space-y-1 text-xs text-ink-muted">
             {res.achados.slice(0, 15).map((a) => (
-              <li key={a.id}>{a.publicada ? "📣" : "•"} −{a.desconto}% · R$ {a.preco.toFixed(2).replace(".", ",")} · {a.titulo} <span className="text-ink-muted">({a.motivo}{a.motivoNao ? `; ${a.motivoNao}` : ""})</span></li>
+              <li key={a.id}>{a.publicada ? "📣" : "•"} {a.desconto > 0 ? `−${a.desconto}%` : "preço bom"} · R$ {a.preco.toFixed(2).replace(".", ",")} · {a.titulo} <span className="text-ink-muted">({a.motivo}{a.motivoNao ? `; ${a.motivoNao}` : ""})</span></li>
             ))}
             {!res.achados.length && <li>Nenhuma oferta de verdade agora{res.relevantes ? " (ou o bot ainda está montando o histórico de preços)" : ""}.</li>}
           </ul>
@@ -61,7 +62,7 @@ export function PainelOfertas({ conectado }: { conectado: boolean }) {
                   {v.itens.length ? (
                     <ul className="mt-1 space-y-0.5 text-ink-muted">
                       {v.itens.map((i, k) => (
-                        <li key={k}>R$ {i.preco.toFixed(2).replace(".", ",")} · {i.umKg ? "1 kg" : "não é 1 kg"} · {i.titulo.slice(0, 60)}</li>
+                        <li key={k}>R$ {i.preco.toFixed(2).replace(".", ",")} · {i.peso === "1kg" ? "1 kg" : i.peso === "sem" ? "peso não informado" : "não é 1 kg"}{i.teto ? ` · teto R$ ${i.teto}` : ""} · {i.titulo.slice(0, 60)}</li>
                       ))}
                     </ul>
                   ) : <p className="mt-1 text-ink-muted">nada relevante no catálogo agora</p>}

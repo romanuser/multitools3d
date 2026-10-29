@@ -3,7 +3,7 @@
 // O banco entra por parâmetro (Db) pra dar pra testar sem Supabase.
 // ---------------------------------------------------------------------
 import { BUSCAS, REGRAS, type Busca } from "./config";
-import { avaliar, combina, ehUmKg, linkAfiliado, mensagemTelegram, mensagemWhatsApp, podeRepublicar, type Item, type Leitura, type Avaliacao } from "./regras";
+import { alvoDe, avaliar, combina, pesoDe, linkAfiliado, mensagemTelegram, mensagemWhatsApp, podeRepublicar, type Item, type Leitura, type Avaliacao } from "./regras";
 import { buscar, renovar, ErroML, type TokenML } from "./ml";
 import { avisarAdmin, postarOferta, telegramConfigurado } from "./telegram";
 
@@ -61,7 +61,10 @@ export async function rodar(d: Deps) {
       return buscarFn(novo.access_token, b.termo);
     }
   };
-  const lotes = await Promise.allSettled(buscas.map(buscarComRenovacao));
+  // em lotes (não dispara tudo de uma vez na API)
+  const lotes: PromiseSettledResult<Item[]>[] = [];
+  for (let i = 0; i < buscas.length; i += REGRAS.buscasEmParalelo)
+    lotes.push(...(await Promise.allSettled(buscas.slice(i, i + REGRAS.buscasEmParalelo).map(buscarComRenovacao))));
   const porId = new Map<string, { item: Item; busca: Busca }>();
   let lidos = 0;
   lotes.forEach((r, i) => {
@@ -72,9 +75,9 @@ export async function rodar(d: Deps) {
   const ids = [...porId.keys()];
   // pra conferência: os mais baratos que o bot enxergou em cada busca
   const vistos = buscas.map((b) => ({
-    busca: b.rotulo, alvo: b.alvo ?? null,
+    busca: b.id.startsWith("m_") ? `${b.rotulo} (${b.termo.split(" ").pop()})` : b.rotulo, alvo: b.alvo ?? null,
     itens: [...porId.values()].filter((x) => x.busca.id === b.id).map((x) => x.item).sort((a, c) => a.preco - c.preco).slice(0, 4)
-      .map((i) => ({ titulo: i.titulo, preco: i.preco, umKg: ehUmKg(i.titulo) })),
+      .map((i) => ({ titulo: i.titulo, preco: i.preco, peso: pesoDe(i.titulo), teto: alvoDe(i.titulo, b) ?? null })),
   }));
 
   // 3) compara com o histórico (ANTES de gravar a leitura de agora)

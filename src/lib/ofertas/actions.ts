@@ -6,6 +6,7 @@ import { rodar } from "./rodar";
 import { dbSupabase } from "./db";
 import { ultimasConversas } from "./telegram";
 import { diagnostico, renovar } from "./ml";
+import { BUSCAS } from "./config";
 
 export type ResultadoRodada = Awaited<ReturnType<typeof rodar>>;
 
@@ -13,7 +14,8 @@ export type ResultadoRodada = Awaited<ReturnType<typeof rodar>>;
 export async function rodarAgora(publicar: boolean, soFilamentos = false): Promise<{ ok?: ResultadoRodada; erro?: string }> {
   if (!(await ehAdmin())) return { erro: "Só o administrador." };
   // poucas buscas por vez (cabe no tempo limite da Netlify); "Testar filamentos" usa só as de filamento com preço-alvo
-  const ids = soFilamentos ? ["pla", "petg", "abs", "tpu", "silk"] : undefined;
+  // "filamentos" = as buscas por marca (é onde aparecem os mais baratos)
+  const ids = soFilamentos ? BUSCAS.filter((b) => b.id.startsWith("m_")).map((b) => b.id) : undefined;
   try { const r = await rodar({ db: dbSupabase(), publicar, ids }); revalidatePath("/admin/ofertas"); revalidatePath("/ofertas"); return { ok: r }; }
   catch (e) { return { erro: e instanceof Error ? e.message : "erro" }; }
 }
