@@ -24,7 +24,7 @@ const PECAS = ["filamento", "bico", "nozzle", "hotend", "hot end", "mesa", "capa
 
 export const BUSCAS: Busca[] = [
   // --- filamentos (alvo = preço bom por 1 kg) ---
-  { id: "pla", termo: "filamento pla 1kg 1.75", rotulo: "Filamento PLA", obrigatorias: ["pla"], proibidas: ["suporte", "secador", "caixa", "amostra"], alvo: 65, pesoKg: true },
+  { id: "pla", termo: "filamento pla 1kg 1.75", rotulo: "Filamento PLA", obrigatorias: ["pla"], proibidas: ["suporte", "secador", "caixa", "amostra"], alvo: 110, pesoKg: true },
   { id: "petg", termo: "filamento petg 1kg 1.75", rotulo: "Filamento PETG", obrigatorias: ["petg"], proibidas: ["suporte", "secador", "amostra"], alvo: 70, pesoKg: true },
   { id: "abs", termo: "filamento abs 1kg 1.75", rotulo: "Filamento ABS/ASA", obrigatorias: ["abs", "asa"], proibidas: ["suporte", "secador"], alvo: 70, pesoKg: true },
   { id: "tpu", termo: "filamento tpu flexivel", rotulo: "Filamento TPU", obrigatorias: ["tpu", "flex"], proibidas: ["suporte"], alvo: 110, pesoKg: true },
