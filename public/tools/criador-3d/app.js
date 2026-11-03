@@ -192,9 +192,9 @@ function prepararParametros(v) {
   }
   if (modelo.id === "porta_lata") {
     // tamanhos: altura do porta-lata, emblema e faixas pensados pra cada lata
-    const T = { "473": { altura: 122, emblema_d: 69, faixa_alt: 12, faixas_baixo: 3 }, "350": { altura: 96, emblema_d: 52, faixa_alt: 10, faixas_baixo: 3 },
-                "269": { altura: 80, emblema_d: 47, faixa_alt: 9, faixas_baixo: 2 } }[v.tamanho] || {};
-    Object.assign(p, T); p.altura = (T.altura || 122) + Number(v.ajuste_altura || 0);
+    const T = { "473": { altura: 150, emblema_d: 69, faixa_alt: 12, faixas_baixo: 3 }, "350": { altura: 116, emblema_d: 69, faixa_alt: 10, faixas_baixo: 3 },
+                "269": { altura: 92, emblema_d: 60, faixa_alt: 9, faixas_baixo: 2 } }[v.tamanho] || {};
+    Object.assign(p, T); p.altura = (T.altura || 150) + Number(v.ajuste_altura || 0);
     for (const k of ["cor_borda", "cor_f1", "cor_f2", "cor_f3"]) p[k] = Number(v[k] || 2);
     delete p.tamanho; delete p.ajuste_altura;
   }
