@@ -20,7 +20,7 @@ export default async function Criador3DPage() {
         </Link>
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-2">Criador 3D</h1>
         <p className="text-sm text-ink-muted">
-          18 modelos: porta-lata com emblema (473, 350 e 269 ml), litofanias, medalha, troféu, crachá, placa Pix, letreiro LED, polias, suportes, tampas e mais. Baixe em STL ou 3MF multicor.
+          20 modelos: porta-lata (473, 350 e 269 ml), tampa giratória de lata, chaveiro abridor, litofanias, medalha, troféu, crachá, placa Pix, letreiro LED, polias, suportes, tampas e mais. Baixe em STL ou 3MF multicor.
         </p>
       </div>
       <div className="max-w-7xl mx-auto w-full flex-1 rounded-2xl overflow-hidden border border-line" style={{ minHeight: "85vh" }}>
