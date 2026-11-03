@@ -1,22 +1,25 @@
 // Tampa giratória para lata (473, 350 e 269 ml — mesma boca) — modelo próprio do Multiferramenta 3D
 // Peças: "anel" (encaixa na borda da lata) e o disco giratório: "disco" (cor 1) + "disco_detalhes" (cor 2, emblema ou texto).
 // O anel e o disco são impressos DE CABEÇA PRA BAIXO (face de cima na mesa): saem lisos e sem suporte.
-diam_borda = 58.5;     // diâmetro da borda (recravação) da lata
+// Padrões medidos em lata real (testados na impressão: encaixe firme, com clique)
+diam_borda = 54.8;     // diâmetro da borda (recravação) da lata
 folga = 0.2;           // folga de cada lado no alojamento da borda
-trava = 1.2;           // quanto a trava entra por baixo da borda
-altura_borda = 3.4;    // altura da borda da lata (alojamento)
+trava = 1.1;           // quanto a trava entra por baixo da borda
+altura_borda = 2.9;    // altura da borda da lata (alojamento)
+parede = 2.4;          // parede da saia
 centro = "logo";       // logo | texto | nada
 texto = "MEU TIME"; fonte = "Poppins:style=Bold"; texto_tam = 6;
 logo = []; lw = 60; lh = 60;
+teste = false;         // anel de teste: só o encaixe (imprime em minutos) pra acertar a medida
 parte = "anel";
 $fn = 128;
 
-placa = 1.6;                            // espessura do topo do anel e do disco
-De = diam_borda + 5.5;                  // diâmetro externo do anel
+placa = 1.4;                            // espessura do topo do anel e do disco
 Dh = diam_borda + 2 * folga;            // alojamento da borda
+De = Dh + 2 * parede;                   // diâmetro externo do anel (60 mm no padrão)
 r_trava = diam_borda / 2 - trava;
-saia = altura_borda + 3.0;              // alojamento + trava (+0,4 acima da trava: sem faces coincidentes)
-BOCA = [0, 16.5];                       // centro da abertura (lado da boca da lata)
+saia = altura_borda + 2.6;              // alojamento + trava (+0,4 acima da trava: sem faces coincidentes)
+BOCA = [0, 15.5];                       // centro da abertura (lado da boca da lata)
 module boca2d() translate(BOCA) hull() { translate([-5, 0]) circle(d = 13); translate([5, 0]) circle(d = 13); }
 Dd = De - 4;                            // disco giratório
 furo_pino = 6.2;
@@ -28,7 +31,7 @@ module anel() difference() {
     difference() { cylinder(d = De, h = placa + saia); translate([0, 0, placa]) cylinder(d = Dh, h = saia + 1); }
     // trava: "dente" interno com rampa dos dois lados (entra e trava); começa dentro da parede
     translate([0, 0, placa + altura_borda]) rotate_extrude()
-      polygon([[Dh / 2 + 1, 0], [Dh / 2, 0], [r_trava, 1.2], [r_trava, 1.6], [Dh / 2, 2.6], [Dh / 2 + 1, 2.6]]);
+      polygon([[Dh / 2 + 1, 0], [Dh / 2, 0], [r_trava, 1.0], [r_trava, 1.4], [Dh / 2, 2.2], [Dh / 2 + 1, 2.2]]);
   }
   translate([0, 0, -1]) cylinder(d = furo_pino, h = placa + 2);
   translate([0, 0, -1]) linear_extrude(placa + 2) boca2d();
@@ -58,6 +61,18 @@ module detalhes() intersection() {
   cylinder(d = Dd - 2, h = 1);
 }
 
-if (parte == "anel") anel();
+// anel de teste: o mesmo encaixe, mas o topo vira só uma aba de 4 mm (sem furo, sem boca) + a medida gravada
+module anel_teste() difference() {
+  union() {
+    difference() { cylinder(d = De, h = placa + saia); translate([0, 0, -1]) cylinder(d = Dh - 8, h = placa + 2); translate([0, 0, placa]) cylinder(d = Dh, h = saia + 1); }
+    translate([0, 0, placa + altura_borda]) rotate_extrude()
+      polygon([[Dh / 2 + 1, 0], [Dh / 2, 0], [r_trava, 1.0], [r_trava, 1.4], [Dh / 2, 2.2], [Dh / 2 + 1, 2.2]]);
+  }
+  for (a = [22.5 : 45 : 359]) rotate(a) translate([De / 2 - 4, -0.6, placa + 1]) cube([6, 1.2, saia + 1]);
+  // medida gravada embaixo da aba (lado da mesa), pra não confundir os testes
+  translate([0, -(Dh / 2 - 2), -0.01]) linear_extrude(0.6) mirror([1, 0, 0]) text(str(diam_borda), size = 2.6, font = fonte, halign = "center", valign = "center");
+}
+
+if (parte == "anel") { if (teste) anel_teste(); else anel(); }
 else if (parte == "disco") difference() { disco_inteiro(); detalhes(); }
 else if (parte == "disco_detalhes") detalhes();

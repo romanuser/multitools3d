@@ -8,6 +8,7 @@ parede = 4.6; fundo = 2.4;
 alca = true;
 fonte = "Poppins:style=Bold";
 texto_tam = 7;             // altura das letras nas faixas
+relevo_texto = 0.8;        // quanto a escrita sai da faixa (relevo na mesma cor)
 faixa_alt = 12;            // altura de cada faixa
 faixas_baixo = 3;          // quantas faixas embaixo (0 a 3)
 borda = true;              // faixa na borda de cima
@@ -48,7 +49,7 @@ module texto_curvo(s, a0, zc, sai = SAI) if (len(s) > 0) {
   for (i = [0 : len(s) - 1]) if (s[i] != " ") {
     x = acum(a, i) + a[i] / 2 - total / 2;
     rotate([0, 0, a0 + x / R * 180 / PI]) translate([R - PROF - 0.5, 0, zc]) rotate([90, 0, 90])
-      linear_extrude(PROF + sai + 1) text(s[i], size = texto_tam, font = fonte, halign = "center", valign = "center");
+      linear_extrude(PROF + sai + 2.5) text(s[i], size = texto_tam, font = fonte, halign = "center", valign = "center");
   }
 }
 // letras "brutas": passam além da faixa por dentro e por fora (pra recortar limpo)
@@ -95,27 +96,31 @@ module textura3d() if (textura && len(logo) > 0) intersection() {
 }
 
 // --- copo ---
-// Regra pra peça sair perfeita: o que é da MESMA cor se sobrepõe 0,2 mm (funde num corpo só);
-// o que é de cores diferentes só encosta (cada cor é uma peça do 3MF).
+// Pra imprimir RÁPIDO: cada faixa é de UMA cor só, de dentro até fora (a camada inteira tem uma cor),
+// e a escrita sai em RELEVO na mesma cor da faixa. A impressora só troca de cor na divisa entre faixas.
+RELEVO_TXT = relevo_texto;
 module corpo_bruto() difference() {
   union() { cylinder(r = R, h = altura); alca3d(); }
   translate([0, 0, fundo]) cylinder(r = Ri, h = altura);
 }
+// faixa inteira: da cavidade até a face de fora (a de baixo inclui o fundo)
+module faixa_inteira(f) difference() {
+  translate([0, 0, f[0]]) cylinder(r = R + f[4], h = faixa_alt);
+  translate([0, 0, fundo]) cylinder(r = Ri, h = altura);
+}
+// escrita em relevo: 0,6 mm pra fora, entrando 0,3 mm na faixa (funde com ela)
+module letras_relevo(f) intersection() { anel(f[0], R + f[4] - 0.3, R + f[4] + RELEVO_TXT, faixa_alt); letras(f); }
+module zona(f) translate([0, 0, f[0]]) cylinder(r = R + 10, h = faixa_alt);
+
 module principal() union() {
   difference() {
-    union() {
-      corpo_bruto();
-      for (f = faixas) if (f[1] == 1) anel(f[0], R - 0.2, R + f[4], faixa_alt);         // faixa cor 1: sai da parede
-      textura3d();
-    }
-    for (f = faixas) if (f[1] == 2) anel(f[0], R - PROF, R + f[4] + 1, faixa_alt);      // espaço das faixas cor 2
-    for (f = faixas) if (f[1] == 1) letras_recorte(f);                                   // espaço das letras cor 2
+    union() { corpo_bruto(); textura3d(); }
+    for (f = faixas) if (f[1] == 2) zona(f);                        // altura das faixas cor 2: é da outra peça
   }
-  for (f = faixas) if (f[1] == 2) letras_embutidas(f, R - PROF - 0.2);                  // letras cor 1 nas faixas cor 2
+  for (f = faixas) if (f[1] == 1) union() { faixa_inteira(f); letras_relevo(f); }
 }
 module faixas_cor2() union() {
-  for (f = faixas) if (f[1] == 2) difference() { faixa_cheia(f); letras(f); }             // faixa cor 2 vazada nas letras
-  for (f = faixas) if (f[1] == 1) letras_embutidas(f, R - PROF);                         // letras cor 2 nas faixas cor 1
+  for (f = faixas) if (f[1] == 2) union() { faixa_inteira(f); letras_relevo(f); }
 }
 
 // --- emblema (deitado, separado) ---
