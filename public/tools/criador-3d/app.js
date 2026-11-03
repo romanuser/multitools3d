@@ -175,6 +175,20 @@ function posArgola(contorno, forma, furo) {
 const paraSTL = (L) => { const n = L.triangulos, buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf); dv.setUint32(80, n, true);
   for (let i = 0; i < n; i++) for (let k = 0; k < 9; k++) dv.setFloat32(84 + i * 50 + 12 + k * 4, L.tri[i * 9 + k], true); return buf; };
 
+// quantos pedaços soltos tem uma malha (pra avisar quando o nome não sai inteiro)
+function contarPedacos(tri) {
+  const id = new Map(), pai = [];
+  const ach = (a) => { while (pai[a] !== a) { pai[a] = pai[pai[a]]; a = pai[a]; } return a; };
+  const v = (k) => { const ch = `${tri[k].toFixed(3)},${tri[k + 1].toFixed(3)},${tri[k + 2].toFixed(3)}`; if (!id.has(ch)) { id.set(ch, pai.length); pai.push(pai.length); } return id.get(ch); };
+  for (let t = 0; t < tri.length; t += 9) {
+    const ax = tri[t + 3] - tri[t], ay = tri[t + 4] - tri[t + 1], az = tri[t + 5] - tri[t + 2], bx = tri[t + 6] - tri[t], by = tri[t + 7] - tri[t + 1], bz = tri[t + 8] - tri[t + 2];
+    if (Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx) < 1e-6) continue;   // ignora triângulo sem área
+    const a = v(t), b = v(t + 3), c = v(t + 6); pai[ach(b)] = ach(a); pai[ach(c)] = ach(a);
+  }
+  const raizes = new Set(); for (const k of id.values()) raizes.add(ach(k));
+  return raizes.size;
+}
+
 // ---------- gerar ----------
 function prepararParametros(v) {
   const f = FONTES.find((x) => x.nome === v.fonte) || FONTES[0];
@@ -300,6 +314,11 @@ function receber(data) {
   });
   desenhar(); enquadrar(); montarBarra();
   if (rolarDepois) { rolarDepois = false; view.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  if (modelo.checarPedacos && !(Number(paramsAtual.borda) > 0)) {
+    const r = resultado.find((x) => x.parte === "letras");
+    const n = r ? contarPedacos(r.tri) : 1;
+    if (n > 1) aviso += ` · atenção: o nome saiu em ${n} pedaços — use contorno, aumente o aperto ou ligue a barra`;
+  }
   status(`Pronto em ${(data.partes.reduce((s, p) => s + p.ms, 0) / 1000).toFixed(1).replace(".", ",")} s · arraste pra girar${aviso}`, !!aviso);
   if (!aviso) statusTimer = setTimeout(() => status(""), 3500);      // aviso (ex.: QR pequeno) fica na tela
 }

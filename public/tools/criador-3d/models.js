@@ -315,4 +315,23 @@ export const MODELOS = [
     dicas: ["A ponta fina entra embaixo do anel e levanta; a abertura engancha o anel pra puxar.",
       "Imprima deitado, em PETG ou PLA com 100% de preenchimento na ponta (ou 4+ paredes)."],
   },
+
+  {
+    id: "nome_colado", nome: "Nome em 3D (letras coladas)", resumo: "O nome inteiro numa peça só, com contorno opcional em outra cor.", icone: "✍️",
+    partes: [{ id: "letras", nome: "Nome", cor: "#e11d48" }, { id: "base", nome: "Contorno", cor: "#f5f5f5" }],
+    partesSe: { base: (p) => Number(p.borda) > 0 },
+    checarPedacos: true,
+    campos: [
+      txt("nome", "Nome", "Rafael", 20), fonte("Pacifico"),
+      num("altura_letra", "Tamanho das letras (mm)", 30, 12, 80, 1),
+      num("espessura", "Espessura das letras (mm)", 5, 2, 15, 0.5),
+      num("aperto", "Aperto entre as letras (%)", 15, 0, 40, 1, "Quanto cada letra encosta na próxima. Mais = mais grudadas."),
+      num("borda", "Contorno (mm)", 2.5, 0, 8, 0.5, "Com contorno o nome sai SEMPRE numa peça só. 0 = sem contorno."),
+      num("espessura_base", "Espessura do contorno (mm)", 2, 1, 5, 0.2),
+      sim("barra", "Barra embaixo (pro nome ficar em pé)", false),
+    ],
+    dicas: ["Fontes cursivas (Pacifico, Lobster, Courgette) já têm as letras emendadas: ficam mais bonitas assim.",
+      "Com contorno em outra cor é 1 troca de filamento só: o contorno embaixo e o nome por cima.",
+      "Sem contorno, o Criador avisa se alguma letra (ou o pingo do i) ficar solta."],
+  },
 ];
