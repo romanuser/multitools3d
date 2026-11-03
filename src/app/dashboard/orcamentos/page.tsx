@@ -13,7 +13,7 @@ export default async function OrcamentosPage() {
 
   if (!user) redirect("/login");
 
-  const [{ data: account }, { data: patterns }] = await Promise.all([
+  const [{ data: account }, { data: patterns }, { data: filaments }] = await Promise.all([
     supabase
       .from("accounts")
       .select("company_name, company_logo_url, pricing_params")
@@ -24,6 +24,11 @@ export default async function OrcamentosPage() {
       .select("id, name, dimensions, weight, production_time, notes, accessories, active")
       .eq("account_id", user.id)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("filament_stock")
+      .select("id, material, color, color_hex, brand, cost_per_kg")
+      .eq("account_id", user.id)
+      .order("material"),
   ]);
 
   return (
@@ -58,6 +63,7 @@ export default async function OrcamentosPage() {
           }}
           patterns={(patterns as QuotePattern[]) ?? []}
           pricingParams={readPricingParams(account?.pricing_params)}
+          filaments={filaments ?? []}
         />
       </div>
     </main>

@@ -248,4 +248,31 @@ export const MODELOS = [
     ],
     dicas: ["Faça primeiro um teste com 4 mm de altura pra acertar a folga antes da tampa inteira.", "Pra comida, use PLA/PETG alimentício e lave antes."],
   },
+
+  {
+    id: "porta_lata", nome: "Porta-lata com alça", resumo: "473, 350 ou 269 ml, com faixas, textos e emblema do time.", icone: "🍺", logo: true,
+    partes: [{ id: "principal", nome: "Copo (cor principal)", cor: "#f5f5f5" }, { id: "faixas", nome: "Faixas e textos (2ª cor)", cor: "#1e4fb8" },
+             { id: "emblema_base", nome: "Emblema — base", cor: "#f5f5f5" }, { id: "emblema_detalhes", nome: "Emblema — desenho", cor: "#1e4fb8" }],
+    grupos: { emblema_base: "Emblema", emblema_detalhes: "Emblema" },   // o emblema sai como peça separada (impressa deitada)
+    exemplo: { logo: "exemplos/escudo-exemplo.png" },
+    campos: [
+      imagem("logo", "Emblema (imagem)", "Escudo em 2 cores: a parte escura vira a 2ª cor, a clara vira a base."),
+      num("limiar", "Limiar do emblema", 0.5, 0.1, 0.9, 0.05), sim("inverter", "Inverter cores do emblema", false),
+      escolha("tamanho", "Tamanho da lata", [["473", "473 ml (latão)"], ["350", "350 ml (lata comum)"], ["269", "269 ml (latinha)"]], "473"),
+      num("diametro_lata", "Diâmetro da lata (mm)", 66.2, 50, 80, 0.1, "Meça a sua lata com paquímetro. As de 473 e 350 ml costumam ter 66 mm."),
+      num("ajuste_altura", "Ajuste da altura (mm)", 0, -30, 30, 1, "Mais alto ou mais baixo que o padrão do tamanho."),
+      txt("borda_frente", "Borda de cima — frente", "SEU TIME", 18, "", true), txt("borda_verso", "Borda de cima — verso", "DESDE 1921", 18, "", true),
+      txt("f1_frente", "Faixa 1 (de cima) — frente", "AQUI É", 18, "", true), txt("f2_frente", "Faixa 2 — frente", "SÓ", 18, "", true), txt("f3_frente", "Faixa 3 (de baixo) — frente", "PAIXÃO", 18, "", true),
+      txt("f1_verso", "Faixa 1 — verso", "MAIOR", 18, "", true), txt("f2_verso", "Faixa 2 — verso", "DO", 18, "", true), txt("f3_verso", "Faixa 3 — verso", "MUNDO", 18, "", true),
+      fonte("Poppins Bold"), num("texto_tam", "Tamanho das letras (mm)", 7, 4, 10, 0.5),
+      escolha("cor_borda", "Cor da borda", [["2", "2ª cor"], ["1", "Cor principal"]], "2"),
+      escolha("cor_f1", "Cor da faixa 1", [["2", "2ª cor"], ["1", "Cor principal"]], "2"),
+      escolha("cor_f2", "Cor da faixa 2", [["2", "2ª cor"], ["1", "Cor principal"]], "1"),
+      escolha("cor_f3", "Cor da faixa 3", [["2", "2ª cor"], ["1", "Cor principal"]], "2"),
+      sim("alca", "Com alça", true), sim("textura", "Textura de emblemas pequenos no corpo", true),
+    ],
+    dicas: ["Imprima o copo em pé, com 2 cores (AMS ou troca de filamento). O texto de cada faixa sai na cor oposta à da faixa.",
+      "O emblema sai separado, deitado, com 1,4 mm: dá pra moldar na curva do copo e colar.",
+      "No 269 ml são 2 faixas embaixo (a faixa 3 é ignorada). Confirme o diâmetro medindo a sua lata."],
+  },
 ];

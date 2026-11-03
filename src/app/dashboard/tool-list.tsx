@@ -43,7 +43,7 @@ export const manageTools: Tool[] = [
 export const createTools: Tool[] = [
   {
     title: "Criador 3D",
-    description: "Litofanias, medalha, troféu, crachá, placa Pix, letreiro LED, polias, suportes e tampas: 17 modelos prontos pra imprimir.",
+    description: "Porta-lata com emblema, litofanias, medalha, troféu, crachá, placa Pix, letreiro LED e mais: 18 modelos prontos pra imprimir.",
     href: "/dashboard/criador-3d",
     icon: "star",
   },

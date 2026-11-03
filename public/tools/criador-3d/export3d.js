@@ -49,8 +49,15 @@ export function make3mf(partes) {
     objs += `<object id="${id}" name="${p.nome}" type="model" pid="100" pindex="${idx}"><mesh><vertices>${verts.join("")}</vertices><triangles>${tris.join("")}</triangles></mesh></object>`;
     ids.push(id++);
   });
-  const juntas = ids.filter((_, k) => !partes[k].solta), soltas = ids.filter((_, k) => partes[k].solta);
+  const juntas = ids.filter((_, k) => !partes[k].solta), soltas = ids.filter((_, k) => partes[k].solta && !partes[k].grupo);
   let build = soltas.map((i) => `<item objectid="${i}"/>`).join("");
+  // grupos soltos (ex.: emblema = base + desenho): um objeto multicor separado por grupo
+  const grupos = [...new Set(partes.filter((p) => p.solta && p.grupo).map((p) => p.grupo))];
+  for (const g of grupos) {
+    const membros = ids.filter((_, k) => partes[k].solta && partes[k].grupo === g);
+    objs += `<object id="${id}" name="${g}" type="model"><components>${membros.map((i) => `<component objectid="${i}"/>`).join("")}</components></object>`;
+    build += `<item objectid="${id}"/>`; id++;
+  }
   if (juntas.length === 1) build = `<item objectid="${juntas[0]}"/>` + build;
   else if (juntas.length > 1) { objs += `<object id="${id}" name="Peça" type="model"><components>${juntas.map((i) => `<component objectid="${i}"/>`).join("")}</components></object>`; build = `<item objectid="${id}"/>` + build; }
   const model = `<?xml version="1.0" encoding="UTF-8"?>

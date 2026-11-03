@@ -6,6 +6,11 @@ import type { QuotePattern } from "@/lib/quotes/types";
 import { calcPrice, DEFAULT_PRICE_PARAMS, type PriceParams } from "@/lib/quotes/calc";
 import { savePricingParams } from "@/lib/quotes/pricing-actions";
 
+// Filamento do estoque (o preço do kg vem de lá) e cada cor usada na peça
+export type FilamentoEstoque = { id: string; material: string; color: string; color_hex: string | null; brand: string | null; cost_per_kg: number | null };
+type Cor = { key: number; filamentId: string; nome: string; precoKg: string; gramas: string };
+const novaCor = (key: number): Cor => ({ key, filamentId: "", nome: "PLA", precoKg: "99", gramas: "100" });
+
 const money = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -13,21 +18,30 @@ export function QuoteCalculator({
   company,
   patterns,
   pricingParams = DEFAULT_PRICE_PARAMS,
+  filaments = [],
 }: {
   company: { name: string | null; logoUrl: string | null };
   patterns: QuotePattern[];
   pricingParams?: PriceParams;
+  filaments?: FilamentoEstoque[];
 }) {
   const [selectedPatternId, setSelectedPatternId] = useState("");
   const [showPatternInfo, setShowPatternInfo] = useState(false);
 
-  const [material, setMaterial] = useState("PLA");
   // Os campos numéricos guardam TEXTO, não número — assim dá pra apagar e
   // digitar de novo sem o campo forçar um "0" no meio do caminho
   // (problema clássico de input numérico controlado em React). O valor
   // numérico de verdade (pra calcular) sai de toNumber() na hora de usar.
-  const [filamentPrice, setFilamentPrice] = useState("99");
-  const [grams, setGrams] = useState("100");
+  // Uma linha por cor (cada cor pode ter um preço de kg diferente)
+  const [cores, setCores] = useState<Cor[]>([novaCor(1)]);
+  const [proxKey, setProxKey] = useState(2);
+  const mudarCor = (key: number, campos: Partial<Cor>) => setCores((cs) => cs.map((c) => (c.key === key ? { ...c, ...campos } : c)));
+  const escolherDoEstoque = (key: number, id: string) => {
+    const f = filaments.find((x) => x.id === id);
+    mudarCor(key, f ? { filamentId: id, nome: `${f.material} ${f.color}`.trim(), precoKg: String(f.cost_per_kg ?? 0) } : { filamentId: "" });
+  };
+  const adicionarCor = () => { setCores((cs) => [...cs, { ...novaCor(proxKey), gramas: "" }]); setProxKey((k) => k + 1); };
+  const removerCor = (key: number) => setCores((cs) => (cs.length > 1 ? cs.filter((c) => c.key !== key) : cs));
   const [watts, setWatts] = useState(String(pricingParams.watts));
   const [hours, setHours] = useState("5");
   const [kwhPrice, setKwhPrice] = useState(String(pricingParams.kwhPrice));
@@ -82,8 +96,8 @@ export function QuoteCalculator({
   );
 
   const result = useMemo(() => {
-    const fp = Math.max(0, toNumber(filamentPrice));
-    const g = Math.max(0, toNumber(grams));
+    // custo do filamento = soma de cada cor (gramas × preço do kg daquela cor)
+    const custoFilamento = cores.reduce((s, c) => s + (Math.max(0, toNumber(c.precoKg)) * Math.max(0, toNumber(c.gramas))) / 1000, 0);
     const w = Math.max(0, toNumber(watts));
     const h = Math.max(0, toNumber(hours));
     const kwh = Math.max(0, toNumber(kwhPrice));
@@ -91,14 +105,15 @@ export function QuoteCalculator({
     const fixed = Math.max(0, toNumber(fixedCosts));
     const marg = Math.max(0, toNumber(margin));
 
-    return calcPrice((fp * g) / 1000, h, {
+    return calcPrice(custoFilamento, h, {
       watts: w,
       kwhPrice: kwh,
       labor: lab,
       fixedCosts: fixed,
       marginPercent: marg,
     });
-  }, [filamentPrice, grams, watts, hours, kwhPrice, labor, fixedCosts, margin]);
+  }, [cores, watts, hours, kwhPrice, labor, fixedCosts, margin]);
+  const gramasTotal = cores.reduce((s, c) => s + Math.max(0, toNumber(c.gramas)), 0);
 
   const total = result.suggested * Math.max(1, toNumber(quantity));
 
@@ -238,9 +253,8 @@ export function QuoteCalculator({
   }
 
   function reset() {
-    setMaterial("PLA");
-    setFilamentPrice("99");
-    setGrams("100");
+    setCores([novaCor(1)]);
+    setProxKey(2);
     setWatts(String(savedParams.watts));
     setHours("5");
     setKwhPrice(String(savedParams.kwhPrice));
@@ -307,17 +321,54 @@ export function QuoteCalculator({
           )}
         </Section>
 
-        <Section title="Filamento" icon="◉">
-          <div className="grid sm:grid-cols-3 gap-4">
-            <Field label="Material de referência">
-              <input
-                value={material}
-                onChange={(e) => setMaterial(e.target.value)}
-                className="input"
-              />
-            </Field>
-            <NumberField label="Preço do filamento" suffix="R$/kg" step="0.01" value={filamentPrice} setValue={setFilamentPrice} />
-            <NumberField label="Quantidade utilizada" suffix="g" value={grams} setValue={setGrams} />
+        <Section title="Filamento por cor" icon="◉">
+          <p className="text-sm text-ink-muted -mt-2 mb-4">
+            Uma linha pra cada cor da peça, com o peso que o fatiador mostra pra ela. Escolha do estoque pra puxar o preço do kg.
+          </p>
+          <div className="space-y-3">
+            {cores.map((c, i) => {
+              const f = filaments.find((x) => x.id === c.filamentId);
+              const custo = (Math.max(0, toNumber(c.precoKg)) * Math.max(0, toNumber(c.gramas))) / 1000;
+              return (
+                <div key={c.key} className="grid gap-3 sm:grid-cols-[1.3fr_1fr_1.05fr_0.9fr_auto] items-end border border-line rounded-xl p-3">
+                  <Field label={`Cor ${i + 1}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-full border border-line shrink-0" style={{ background: f?.color_hex || "transparent" }} aria-hidden="true" />
+                      <select value={c.filamentId} onChange={(e) => escolherDoEstoque(c.key, e.target.value)} className="input">
+                        <option value="">Digitar à mão</option>
+                        {filaments.map((x) => (
+                          <option key={x.id} value={x.id}>
+                            {x.material} {x.color}{x.brand ? ` (${x.brand})` : ""} — {money(Number(x.cost_per_kg || 0))}/kg
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </Field>
+                  <Field label="Material / cor">
+                    <input value={c.nome} onChange={(e) => mudarCor(c.key, { nome: e.target.value })} className="input" placeholder="Ex.: PLA Preto" />
+                  </Field>
+                  <NumberField label="Preço do kg" suffix="R$/kg" step="0.01" value={c.precoKg} setValue={(v) => mudarCor(c.key, { precoKg: v })} />
+                  <NumberField label="Peso dessa cor" suffix="g" step="0.1" value={c.gramas} setValue={(v) => mudarCor(c.key, { gramas: v })} />
+                  <div className="flex flex-col items-end gap-1 pb-2">
+                    <span className="text-xs text-ink-muted font-spec">{money(custo)}</span>
+                    {cores.length > 1 && (
+                      <button type="button" onClick={() => removerCor(c.key)} className="text-xs text-ink-muted hover:text-danger" aria-label={`Remover cor ${i + 1}`}>
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+            <button type="button" onClick={adicionarCor} className="text-sm text-amber border border-amber/40 rounded-full px-4 py-1.5">
+              + Adicionar cor
+            </button>
+            <p className="text-sm text-ink-muted">
+              Total: <span className="text-ink font-spec">{gramasTotal.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} g</span> ·{" "}
+              <span className="text-ink font-spec">{money(result.filament)}</span> de filamento
+            </p>
           </div>
         </Section>
 

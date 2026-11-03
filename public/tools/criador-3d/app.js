@@ -83,7 +83,11 @@ function montarModelos() {
     b.setAttribute("aria-pressed", m === modelo); b.onclick = async () => {
       modelo = m; resultado = null; grupo.clear(); $("barra").replaceChildren(); montarModelos(); montarForm();
       const ci = m.campos.find((c) => c.tipo === "imagem");
-      if (ci && !imagens[ci.modo]) { try { await carregarImagem(EXEMPLO[ci.modo], ci.modo); } catch { /* segue sem */ } }
+      // exemplo do próprio modelo (ex.: escudo no porta-lata); troca se o que está carregado é o exemplo de outro modelo
+      const exemplo = modelo.exemplo?.[ci?.modo] || EXEMPLO[ci?.modo];
+      if (ci && (!imagens[ci.modo] || (imagens[ci.modo].exemplo && imagens[ci.modo].exemplo !== exemplo))) {
+        try { await carregarImagem(exemplo, ci.modo); if (imagens[ci.modo]) imagens[ci.modo].exemplo = exemplo; } catch { /* segue sem */ }
+      }
       desenharPrevia(); gerar();
     };
     return b;
@@ -96,7 +100,7 @@ function campoUI(c) {
     const arq = el("input", { type: "file", accept: "image/png,image/jpeg,image/webp,image/svg+xml", style: "padding:6px" });
     const ex = el("button", { type: "button", className: "btn2", textContent: "Usar exemplo", style: "font-size:12px;padding:6px 12px" });
     arq.onchange = async () => { const f = arq.files?.[0]; if (!f) return; try { await carregarImagem(URL.createObjectURL(f), c.modo); desenharPrevia(); gerar(); } catch (e) { status(e.message, true); } };
-    ex.onclick = async () => { await carregarImagem(EXEMPLO[c.modo], c.modo); arq.value = ""; desenharPrevia(); gerar(); };
+    ex.onclick = async () => { const e = modelo.exemplo?.[c.modo] || EXEMPLO[c.modo]; await carregarImagem(e, c.modo); if (imagens[c.modo]) imagens[c.modo].exemplo = e; arq.value = ""; desenharPrevia(); gerar(); };
     wrap.append(el("label", { textContent: c.rotulo }),
       el("div", { className: "linha", style: "align-items:flex-start" }, el("canvas", { id: "previa", width: 96, height: 96, style: "border-radius:10px;border:1px solid var(--line);flex:none" }),
         el("div", { style: "display:flex;flex-direction:column;gap:6px;min-width:0" }, arq, ex)));
@@ -155,7 +159,7 @@ const partesAtivas = (p) => modelo.partes.filter((pt) => !modelo.partesSe?.[pt.i
 let paramsAtual = {}, aviso = "";
 const separadasAgora = () => !!(modelo.separadas || modelo.separaPartes);
 // essa parte é impressa separada? (ex.: na placa Pix só o pé; no letreiro, a tampa)
-const parteSolta = (pid, i) => i > 0 && (modelo.separaPartes ? modelo.separaPartes.includes(pid) : !!modelo.separadas);
+const parteSolta = (pid, i) => i > 0 && (!!modelo.grupos?.[pid] || (modelo.separaPartes ? modelo.separaPartes.includes(pid) : !!modelo.separadas));
 // recorte quadrado no centro da foto (litofania em formato)
 function fotoQuadrada(img) {
   const lado = Math.min(img.w, img.h), x0 = Math.floor((img.w - lado) / 2), y0 = Math.floor((img.h - lado) / 2), g = new Float32Array(lado * lado);
@@ -186,6 +190,14 @@ function prepararParametros(v) {
     const lado = p.largura - 16 - (p.formato === "compacta" ? 6 : 0), mod = lado / n;
     aviso = mod < 1.5 ? ` · atenção: QR pequeno (quadradinhos de ${mod.toFixed(1).replace(".", ",")} mm) — aumente a largura` : "";
   }
+  if (modelo.id === "porta_lata") {
+    // tamanhos: altura do porta-lata, emblema e faixas pensados pra cada lata
+    const T = { "473": { altura: 122, emblema_d: 69, faixa_alt: 12, faixas_baixo: 3 }, "350": { altura: 96, emblema_d: 52, faixa_alt: 10, faixas_baixo: 3 },
+                "269": { altura: 80, emblema_d: 47, faixa_alt: 9, faixas_baixo: 2 } }[v.tamanho] || {};
+    Object.assign(p, T); p.altura = (T.altura || 122) + Number(v.ajuste_altura || 0);
+    for (const k of ["cor_borda", "cor_f1", "cor_f2", "cor_f3"]) p[k] = Number(v[k] || 2);
+    delete p.tamanho; delete p.ajuste_altura;
+  }
   if (modelo.logo === "opcional") {
     const usa = p.centro === "logo" || p.topo === "logo";
     if (usa) {
@@ -198,7 +210,7 @@ function prepararParametros(v) {
   }
   if (modelo.logo && modelo.logo !== "opcional") {
     const img = imagens.logo; if (!img) throw new Error("Envie um logo ou desenho.");
-    const r = vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: v.largura });
+    const r = vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: v.largura ?? 60 });
     if (!r || !r.poligonos.length) throw new Error("Não achei o desenho na imagem: mexa no limiar ou marque “inverter”.");
     if (modelo.logo === "silhueta") p.silhueta = r.poligonos.map(([pts, paths]) => { const anel = paths[0].map((i) => pts[i]); return [anel, [anel.map((_, i) => i)]]; });
     else p.logo = r.poligonos;
@@ -275,13 +287,16 @@ function receber(data) {
   if (!data.ok) { status("Não deu pra gerar: " + data.erro, true); return; }
   // partes impressas separadas (ex.: tampa do letreiro, pé da placa) ficam logo abaixo, com 10 mm de espaço;
   // as outras ficam no lugar (são a mesma peça em outra cor)
-  let minYAll = Infinity;
+  let minYAll = Infinity; const offGrupo = {};
   resultado = data.partes.map((r, i) => {
     const def = modelo.partes.find((p) => p.id === r.parte); const tri = stlTriangles(r.stl);
     let mn = Infinity, mx = -Infinity; for (let k = 1; k < tri.length; k += 3) { mn = Math.min(mn, tri[k]); mx = Math.max(mx, tri[k]); }
-    const solta = parteSolta(r.parte, i), off = solta ? minYAll - 10 - mx : 0;
+    // partes do mesmo grupo (ex.: base + desenho do emblema) ficam juntas, com o mesmo deslocamento
+    const grupo = modelo.grupos?.[r.parte] || null, solta = parteSolta(r.parte, i);
+    const off = !solta ? 0 : grupo && offGrupo[grupo] !== undefined ? offGrupo[grupo] : minYAll - 10 - mx;
+    if (grupo) offGrupo[grupo] = off;
     minYAll = Math.min(minYAll, mn + off);
-    return { parte: r.parte, nome: def.nome, tri, dy: off, solta, stl: r.stl, ms: r.ms, raio: r.raio, formato: r.formato, tmin: r.tmin };
+    return { parte: r.parte, nome: def.nome, tri, dy: off, solta, grupo, stl: r.stl, ms: r.ms, raio: r.raio, formato: r.formato, tmin: r.tmin };
   });
   desenhar(); enquadrar(); montarBarra();
   if (rolarDepois) { rolarDepois = false; view.scrollIntoView({ behavior: "smooth", block: "start" }); }
@@ -323,7 +338,7 @@ function montarBarra() {
     return el("span", { className: "parte" }, cor, r.nome, stl);
   });
   const b3 = el("button", { type: "button", className: "btn", textContent: "Baixar 3MF (multicor)", style: "width:auto;padding:10px 18px" });
-  b3.onclick = () => baixar(make3mf(resultado.map((r, i) => ({ nome: r.nome, cor: cores[modelo.id + r.parte], tri: r.tri, dy: r.dy, solta: r.solta || (i === 0 && !!modelo.separadas && !modelo.separaPartes) }))), `${nomeArquivo()}.3mf`);
+  b3.onclick = () => baixar(make3mf(resultado.map((r, i) => ({ nome: r.nome, cor: cores[modelo.id + r.parte], tri: r.tri, dy: r.dy, grupo: r.grupo, solta: r.solta || (i === 0 && !!modelo.separadas && !modelo.separaPartes) }))), `${nomeArquivo()}.3mf`);
   $("barra").replaceChildren(...itens, el("span", { className: "esp" }), b3);
 }
 
