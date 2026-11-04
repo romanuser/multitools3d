@@ -89,7 +89,9 @@ z_emb = (z_meio0 + z_meio1) / 2;                                      // centro 
 function ang_dif(a, b) = abs(((a - b + 540) % 360) - 180);
 function livre(a, zc) =
   (textura_emblema || norm([ang_dif(a, FRENTE) * PI / 180 * R, zc - z_emb]) > emblema_d / 2 + textura_tam / 2 + 2) &&
-  !(alca && ang_dif(a, ALCA_ANG) * PI / 180 * R < alca_w / 2 + textura_tam / 2 + 3 && zc > alca_v0 - textura_tam && zc < alca_v1 + sobe_cima + textura_tam);
+  // alça: só desvia dos dois pontos onde os braços encostam no copo (entre eles o copo aparece e leva símbolo)
+  !(alca && ang_dif(a, ALCA_ANG) * PI / 180 * R < alca_w / 2 + textura_tam / 2 + 2 &&
+    (abs(zc - (alca_v1 - alca_t / 2)) < alca_t / 2 + textura_tam / 2 + 2 || abs(zc - (alca_v0 + alca_t / 2)) < alca_t / 2 + textura_tam / 2 + 2));
 module mini_logo() let (k = textura_tam / max(lw, lh)) scale([k, k]) for (p = logo) polygon(points = p[0], paths = p[1]);   // desenho já vem centralizado
 module textura3d() if (textura && len(logo) > 0) intersection() {
   anel(z_meio0 + 2, R - 0.3, R + 0.5, z_meio1 - z_meio0 - 4);
