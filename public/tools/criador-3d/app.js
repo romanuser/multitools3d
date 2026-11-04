@@ -3,7 +3,7 @@ import { OrbitControls } from "./vendor/OrbitControls.js";
 import { FONTES, MODELOS } from "./models.js";
 import { stlTriangles, make3mf } from "./export3d.js";
 import { pixPayload } from "./pix.js";
-import { vetorizarLogo } from "./logo.js";
+import { vetorizarLogo, vetorizarEmblema } from "./logo.js";
 import { gerarLitofania, gerarCilindro, gerarLitofaniaForma } from "./litofania.js";
 
 const $ = (id) => document.getElementById(id);
@@ -224,7 +224,11 @@ function prepararParametros(v) {
   }
   if (modelo.logo && modelo.logo !== "opcional") {
     const img = imagens.logo; if (!img) throw new Error("Envie um logo ou desenho.");
-    const r = vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: v.largura ?? 60 });
+    // emblema (porta-lata): desenho + silhueta do escudo na mesma escala (o formato vem da própria imagem)
+    const r = modelo.emblema
+      ? vetorizarEmblema(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: 60 })
+      : vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: v.largura ?? 60 });
+    if (modelo.emblema && r) p.silhueta = r.silhueta;
     if (!r || !r.poligonos.length) throw new Error("Não achei o desenho na imagem: mexa no limiar ou marque “inverter”.");
     if (modelo.logo === "silhueta") p.silhueta = r.poligonos.map(([pts, paths]) => { const anel = paths[0].map((i) => pts[i]); return [anel, [anel.map((_, i) => i)]]; });
     else p.logo = r.poligonos;

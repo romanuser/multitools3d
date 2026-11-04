@@ -250,13 +250,16 @@ export const MODELOS = [
   },
 
   {
-    id: "porta_lata", nome: "Porta-lata com alça", resumo: "473, 350 ou 269 ml, com faixas, textos e emblema do time.", icone: "🍺", logo: true,
+    id: "porta_lata", nome: "Porta-lata com alça", resumo: "473, 350 ou 269 ml, com faixas, textos e emblema do time.", icone: "🍺", logo: true, emblema: true,
     partes: [{ id: "principal", nome: "Copo (cor principal)", cor: "#f5f5f5" }, { id: "faixas", nome: "Faixas e textos (2ª cor)", cor: "#1e4fb8" },
              { id: "emblema_base", nome: "Emblema — base", cor: "#f5f5f5" }, { id: "emblema_detalhes", nome: "Emblema — desenho", cor: "#1e4fb8" }],
     grupos: { emblema_base: "Emblema", emblema_detalhes: "Emblema" },   // o emblema sai como peça separada (impressa deitada)
     exemplo: { logo: "exemplos/escudo-exemplo.png" },
     campos: [
-      imagem("logo", "Emblema (imagem)", "Escudo em 2 cores: a parte escura vira a 2ª cor, a clara vira a base."),
+      imagem("logo", "Emblema (imagem)", "Escudo em 2 cores: a parte escura vira a 2ª cor, a clara vira a base. PNG com fundo transparente dá o contorno perfeito."),
+      escolha("formato_emblema", "Formato do emblema", [["contorno", "Contorno da imagem (qualquer time)"], ["redondo", "Redondo"], ["escudo", "Escudo pontudo"], ["escudo_reto", "Escudo de base arredondada"], ["oval", "Oval"]], "contorno",
+        "“Contorno da imagem” recorta o emblema no formato do próprio escudo enviado."),
+      num("borda_emblema", "Aro em volta do desenho (mm)", 1.5, 0, 4, 0.5),
       num("limiar", "Limiar do emblema", 0.5, 0.1, 0.9, 0.05), sim("inverter", "Inverter cores do emblema", false),
       escolha("tamanho", "Tamanho da lata", [["473", "473 ml (latão)"], ["350", "350 ml (lata comum)"], ["269", "269 ml (latinha)"]], "473"),
       num("diametro_lata", "Diâmetro da lata (mm)", 66.2, 50, 80, 0.1, "Meça a sua lata com paquímetro. As de 473 e 350 ml costumam ter 66 mm."),
@@ -272,10 +275,10 @@ export const MODELOS = [
       escolha("cor_f3", "Cor da faixa 3", [["2", "2ª cor"], ["1", "Cor principal"]], "2"),
       num("escada", "Escada nas faixas de baixo (mm)", 0.8, 0, 2, 0.1, "Cada faixa de baixo sai isso a mais que a de cima. 0 = sem escada. O diâmetro interno não muda."),
       sim("alca", "Com alça", true), sim("textura", "Textura de emblemas pequenos no copo inteiro", true),
-      sim("textura_emblema", "Textura também atrás do emblema", false),
+      sim("textura_emblema", "Textura também atrás do emblema (copo inteiro)", true),
     ],
     dicas: ["Rápido de imprimir: cada faixa é de uma cor só (a escrita sai em relevo), então a impressora troca de cor só na divisa entre as faixas — umas 4 trocas no copo todo.",
-      "O emblema sai separado, deitado, com 1,4 mm: dá pra moldar na curva do copo e colar. A área dele fica lisa (sem textura) pra colagem.",
+      "O emblema sai separado, deitado, com 1,4 mm, no formato do escudo: dá pra moldar na curva do copo e colar.",
       "No 269 ml são 2 faixas embaixo (a faixa 3 é ignorada). Confirme o diâmetro medindo a sua lata."],
   },
 

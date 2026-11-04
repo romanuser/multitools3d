@@ -18,10 +18,13 @@ borda_frente = "SEU TIME"; borda_verso = "DESDE 1921";
 f1_frente = "AQUI É"; f2_frente = "SÓ"; f3_frente = "PAIXÃO";
 f1_verso = "MAIOR"; f2_verso = "DO"; f3_verso = "MUNDO";
 textura = true; textura_tam = 18;
-textura_emblema = false;   // textura também atrás do emblema (atrapalha a colagem)
+textura_emblema = true;    // textura também atrás do emblema (copo inteiro)
 escada = 0.8;              // cada faixa de baixo sai isso a mais que a de cima ("escada"; o pé fica em destaque)
 emblema_d = 69;            // diâmetro do emblema
 logo = []; lw = 60; lh = 60;   // emblema vetorizado (desenho escuro = cor 2)
+silhueta = [];             // contorno de fora do escudo (mesma escala do desenho)
+formato_emblema = "contorno";   // contorno (o da imagem) | redondo | escudo | escudo_reto | oval
+borda_emblema = 1.5;       // aro da base em volta do desenho
 parte = "principal";
 $fn = 160;
 
@@ -124,9 +127,27 @@ module faixas_cor2() union() {
 }
 
 // --- emblema (deitado, separado) ---
-module emblema_desenho() let (k = (emblema_d * 0.97) / max(lw, lh)) scale([k, k]) for (p = logo) polygon(points = p[0], paths = p[1]);
+// formato: o contorno da própria imagem (qualquer time) ou um formato genérico
+contorno_ok = formato_emblema == "contorno" && len(silhueta) > 0;
+k_emb = contorno_ok ? (emblema_d - 2 * borda_emblema) / max(lw, lh) : (emblema_d * 0.8) / max(lw, lh);
+module poligonos(ps) for (p = ps) polygon(points = p[0], paths = p[1]);
+module emblema_desenho() scale([k_emb, k_emb]) poligonos(logo);
+// formatos genéricos (largura = emblema_d)
+function curva(p0, p1, p2, n = 24) = [for (i = [0 : n]) let (t = i / n) (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2];
+module formato2d(f) scale([emblema_d / 2, emblema_d / 2]) {
+  if (f == "escudo")            // escudo pontudo
+    polygon(concat([[-1, 1], [1, 1], [1, 0.2]], curva([1, 0.2], [0.95, -0.7], [0, -1.2]), curva([0, -1.2], [-0.95, -0.7], [-1, 0.2])));
+  else if (f == "escudo_reto")  // topo reto, base arredondada
+    union() { translate([-1, -0.1]) square([2, 1.1]); translate([0, -0.1]) scale([1, 1.05]) circle(1, $fn = 96); }
+  else if (f == "oval") scale([0.86, 1.08]) circle(1, $fn = 96);
+  else circle(1, $fn = 120);
+}
+module base2d() {
+  if (contorno_ok) offset(r = borda_emblema) scale([k_emb, k_emb]) poligonos(silhueta);
+  else formato2d(formato_emblema);
+}
 
 if (parte == "principal") principal();
 else if (parte == "faixas") faixas_cor2();
-else if (parte == "emblema_base") linear_extrude(0.8) circle(d = emblema_d);
-else if (parte == "emblema_detalhes") translate([0, 0, 0.8]) linear_extrude(0.6) intersection() { circle(d = emblema_d - 0.4); emblema_desenho(); }
+else if (parte == "emblema_base") linear_extrude(0.8) base2d();
+else if (parte == "emblema_detalhes") translate([0, 0, 0.8]) linear_extrude(0.6) intersection() { offset(r = -0.4) base2d(); emblema_desenho(); }
