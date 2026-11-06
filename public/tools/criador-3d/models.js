@@ -283,18 +283,24 @@ export const MODELOS = [
   },
 
   {
-    id: "tampa_lata", nome: "Tampa giratória de lata", resumo: "Encaixa por dentro da borda: você bebe direto na lata. Gira pra abrir e fechar.", icone: "🥫",
-    partes: [{ id: "tampa", nome: "Tampa", cor: "#e5e7eb" }],
+    id: "tampa_lata", nome: "Tampa giratória de lata", resumo: "Encaixa por dentro da borda: você bebe direto na lata. Gira pra abrir e fechar. Com o símbolo do time.", icone: "🥫", logo: "opcional",
+    partes: [{ id: "tampa", nome: "Tampa", cor: "#e5e7eb" }, { id: "desenho", nome: "Símbolo/texto", cor: "#1e4fb8" }],
+    partesSe: { desenho: (p) => !p.teste && p.centro !== "nada" },
+    exemplo: { logo: "exemplos/escudo-exemplo.png" },
     campos: [
       sim("teste", "Só o anel de teste (pra conferir o encaixe — imprime em minutos)", false),
+      escolha("centro", "No disco", [["logo", "Símbolo (imagem)"], ["texto", "Texto"], ["nada", "Nada (sulcos pra girar)"]], "logo"),
+      imagem("logo", "Símbolo (se escolher símbolo)", "A parte escura vira a 2ª cor. Fica embutido, nivelado com o disco."),
+      num("limiar", "Limiar do símbolo", 0.5, 0.1, 0.9, 0.05), sim("inverter", "Inverter cores do símbolo", false),
       num("diam_interno", "Diâmetro por dentro da borda (mm)", 49.5, 42, 56, 0.1, "Meça com o paquímetro POR DENTRO da borda, no topo da lata."),
       num("aperto", "Aperto da saia (mm)", 0.3, 0, 1, 0.05, "Solta demais? Aumente. Não entra? Diminua."),
       num("profundidade", "Profundidade do rebaixo da lata (mm)", 6, 4, 9, 0.1, "Do topo da borda até o fundo da tampa da lata."),
       num("abertura", "Tamanho da janela (graus)", 80, 50, 120, 5),
-      txt("texto", "Texto gravado (opcional)", "", 12, "", true), fonte("Poppins Bold"),
+      txt("texto", "Texto (se escolher texto)", "MEU TIME", 12, "", true), fonte("Poppins Bold"),
     ],
     dicas: ["A borda da lata fica livre: a boca encosta só no metal. O disco fica logo abaixo da borda.",
-      "Empurre até o disco ficar uns 0,8 mm abaixo da borda. Gire pela setinha: janela em cima da boca da lata = aberto; meia volta = fechado.",
+      "Empurre até o disco ficar uns 0,8 mm abaixo da borda. Gire pela janela (ou pelos sulcos): janela em cima da boca da lata = aberto; meia volta = fechado.",
+      "O símbolo fica de pé pra quem bebe (com a janela do lado da boca).",
       "Acerte o encaixe com o anel de teste (a medida sai gravada). PETG é o melhor material (cede sem quebrar)."],
   },
   {

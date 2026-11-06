@@ -8,7 +8,9 @@ aperto = 0.3;          // quanto a saia é maior que o furo (prende por atrito; 
 profundidade = 6.0;    // do topo da borda até o fundo rebaixado da lata
 rebaixo = 0.8;         // o disco fica isso abaixo da borda (a boca encosta só na lata)
 abertura = 80;         // tamanho da janela (graus)
-texto = ""; fonte = "Poppins:style=Bold"; texto_tam = 5;
+centro = "logo";       // logo (símbolo em 2 cores) | texto | nada (sulcos pra girar)
+logo = []; lw = 60; lh = 60;
+texto = "MEU TIME"; fonte = "Poppins:style=Bold"; texto_tam = 5;
 teste = false;         // só a saia + um anel fino, pra conferir o encaixe
 parte = "tampa";
 $fn = 128;
@@ -19,6 +21,18 @@ saia_r = diam_interno / 2 + aperto / 2;        // raio externo da saia (aperta n
 saia_e = 1.2;                                  // espessura da saia
 saia_h = min(3.0, profundidade - rebaixo - placa - 1.6);   // não encosta no fundo (nem na argolinha da lata)
 
+// símbolo ou texto: embutido NIVELADO no topo (2ª cor), na metade fechada do disco.
+// O disco é impresso com o topo na mesa: o desenho vai espelhado pra ler certo na lata.
+EMB = R * 1.05;                                 // tamanho máximo do desenho
+// de pé pra quem bebe (janela perto da boca); espelhado porque o topo é impresso na mesa
+module desenho2d() translate([0, -R * 0.22]) mirror([0, 1, 0]) {
+  if (centro == "logo" && len(logo) > 0) let (k = EMB / max(lw, lh)) scale([k, k]) for (p = logo) polygon(points = p[0], paths = p[1]);
+  else if (centro == "texto" && len(texto) > 0)
+    resize([min(R * 1.4, len(texto) * texto_tam * 0.8), 0], auto = true) text(texto, size = texto_tam, font = fonte, halign = "center", valign = "center");
+}
+module desenho_limitado() difference() { intersection() { circle(r = R - 2.5); desenho2d(); } offset(r = 1.2) janela2d(); }
+tem_desenho = (centro == "logo" && len(logo) > 0) || (centro == "texto" && len(texto) > 0);
+
 // janela: "meia-lua" perto da borda, do lado da boca da lata
 module janela2d() intersection() {
   difference() { circle(r = R - 1.6); circle(r = R - 12); }
@@ -27,13 +41,15 @@ module janela2d() intersection() {
 module disco() difference() {
   cylinder(r = R, h = placa);
   translate([0, 0, -1]) linear_extrude(placa + 2) janela2d();
-  // sulcos pra girar com a ponta do dedo (rebaixados: nada sai acima da borda)
-  for (a = [-35, 0, 35]) rotate(a + 180) translate([0, 9, -0.01]) linear_extrude(0.7) offset(r = 1.2) square([0.01, 12], center = true);
+  // sem desenho: sulcos pra girar com a ponta do dedo (rebaixados: nada sai acima da borda).
+  // Com desenho: gira pela própria janela.
+  if (!tem_desenho) for (a = [-35, 0, 35]) rotate(a + 180) translate([0, 9, -0.01]) linear_extrude(0.7) offset(r = 1.2) square([0.01, 12], center = true);
   // setinha apontando a janela
   translate([0, R - 15.5, -0.01]) linear_extrude(0.5) mirror([1, 0, 0]) polygon([[-3, 0], [3, 0], [0, 4]]);
-  if (len(texto) > 0) translate([0, -R + 10, -0.01]) linear_extrude(0.5) mirror([1, 0, 0])
-    text(texto, size = texto_tam, font = fonte, halign = "center", valign = "center");
+  // espaço do desenho (passa da face de baixo: corta limpo)
+  if (tem_desenho) translate([0, 0, -1]) linear_extrude(1.6) desenho_limitado();
 }
+module desenho3d() linear_extrude(0.6) desenho_limitado();
 // saia: anel curto com fendas (flexiona pra entrar e prende por atrito)
 module saia() translate([0, 0, placa - 0.01]) difference() {
   union() {
@@ -51,3 +67,4 @@ module anel_teste() union() {
 }
 
 if (parte == "tampa") { if (teste) anel_teste(); else union() { disco(); saia(); } }
+else if (parte == "desenho" && !teste && tem_desenho) desenho3d();
