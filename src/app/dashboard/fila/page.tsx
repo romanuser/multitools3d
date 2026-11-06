@@ -1,3 +1,4 @@
+import { COLUNAS_CARRETEL, ordenarCarreteis, rotuloCarretel } from "@/lib/filament/rotulo";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -19,7 +20,7 @@ export default async function FilaPage() {
       .eq("account_id", user.id)
       .order("sequence_number", { ascending: false }),
     supabase.from("printers").select("id, name").eq("account_id", user.id),
-    supabase.from("filament_stock").select("id, material, color").eq("account_id", user.id),
+    supabase.from("filament_stock").select(COLUNAS_CARRETEL).eq("account_id", user.id).neq("status", "acabado"),
   ]);
 
   // Impressões com mais de um filamento — as linhas extras moram numa
@@ -103,7 +104,7 @@ export default async function FilaPage() {
         <PrintQueueBoard
           jobs={jobsWithFilaments}
           printers={printers ?? []}
-          filaments={(filaments ?? []).map((f) => ({ id: f.id, label: `${f.material} · ${f.color}` }))}
+          filaments={ordenarCarreteis(filaments ?? []).map((f) => ({ id: f.id, label: rotuloCarretel(f) }))}
         />
       </div>
     </main>

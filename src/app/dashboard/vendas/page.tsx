@@ -19,7 +19,7 @@ export default async function VendaDiretaPage() {
       )
       .eq("account_id", user.id)
       .order("name", { ascending: true }),
-    supabase.from("filament_stock").select("id, material, color, cost_per_kg").eq("account_id", user.id),
+    supabase.from("filament_stock").select("id, material, color, cost_per_kg, brand, numero, status, current_grams").eq("account_id", user.id),
     supabase.from("printers").select("id, name").eq("account_id", user.id),
     supabase.from("accounts").select("infinitepay_handle, pricing_params").eq("id", user.id).maybeSingle(),
   ]);

@@ -44,6 +44,7 @@ export default async function PainelGeralPage() {
       .from("filament_stock")
       .select("id, material, color, color_hex, brand, spool_weight_g, current_grams, low_stock_alert_g, cost_per_kg")
       .eq("account_id", user.id)
+      .neq("status", "acabado")
       .order("created_at", { ascending: true }),
     supabase
       .from("print_jobs")

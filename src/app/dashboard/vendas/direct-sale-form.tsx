@@ -1,5 +1,6 @@
 "use client";
 
+import { ordenarCarreteis, rotuloCarretel } from "@/lib/filament/rotulo";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDirectSale } from "@/lib/sales/actions";
@@ -476,9 +477,9 @@ export function DirectSaleForm({
                             className="input"
                           >
                             <option value="">Sem filamento do estoque</option>
-                            {filaments.map((f) => (
+                            {ordenarCarreteis(filaments.filter((f) => f.status !== "acabado" || f.id === line.filamentStockId)).map((f) => (
                               <option key={f.id} value={f.id}>
-                                {f.material} · {f.color}
+                                {rotuloCarretel(f)}
                               </option>
                             ))}
                           </select>

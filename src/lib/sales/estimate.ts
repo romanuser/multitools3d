@@ -7,7 +7,7 @@
 // filamentos > um filamento. Sem receita = 0 g (o preço sugerido fica só
 // com mão de obra + custos fixos).
 // ---------------------------------------------------------------------
-export type EstimateFilament = { id: string; material: string; color: string; cost_per_kg: number | null };
+export type EstimateFilament = { id: string; material: string; color: string; cost_per_kg: number | null; brand?: string | null; numero?: number | null; status?: string | null; current_grams?: number | null };
 
 export type EstimateProduct = {
   print_filament_id: string | null;

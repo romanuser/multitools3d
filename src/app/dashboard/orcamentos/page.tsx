@@ -26,8 +26,9 @@ export default async function OrcamentosPage() {
       .order("created_at", { ascending: true }),
     supabase
       .from("filament_stock")
-      .select("id, material, color, color_hex, brand, cost_per_kg")
+      .select("id, material, color, color_hex, brand, cost_per_kg, numero, status, current_grams")
       .eq("account_id", user.id)
+      .neq("status", "acabado")
       .order("material"),
   ]);
 

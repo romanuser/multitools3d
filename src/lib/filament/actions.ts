@@ -25,6 +25,9 @@ export async function saveFilament(
   const currentGrams = Number(formData.get("currentGrams") || 0);
   const costPerKg = Number(formData.get("costPerKg") || 0);
   const lowStockAlertG = Number(formData.get("lowStockAlertG") || 100);
+  // carretel novo: quantos iguais e se já está aberto
+  const quantidade = Math.max(1, Math.min(20, Math.floor(Number(formData.get("quantidade") || 1))));
+  const situacao = String(formData.get("situacao") || "lacrado") === "em_uso" ? "em_uso" : "lacrado";
 
   if (!material) return { error: "Escolha o material." };
   if (!color) return { error: "Dá um nome pra cor (ex: Preto)." };
@@ -41,9 +44,15 @@ export async function saveFilament(
     low_stock_alert_g: lowStockAlertG,
   };
 
+  // novo: N carretéis iguais (cada um ganha o seu número). Lacrado entra cheio.
+  // Se marcou "já aberto", só o primeiro entra aberto; os outros, lacrados.
+  const novos = Array.from({ length: quantidade }, (_, i) => {
+    const aberto = situacao === "em_uso" && i === 0;
+    return { ...payload, status: aberto ? "em_uso" : "lacrado", current_grams: aberto ? currentGrams : spoolWeightG };
+  });
   const { error } = filamentId
     ? await supabase.from("filament_stock").update(payload).eq("id", filamentId)
-    : await supabase.from("filament_stock").insert(payload);
+    : await supabase.from("filament_stock").insert(novos);
 
   if (error) return { error: error.message };
 
@@ -113,5 +122,41 @@ export async function adjustFilament(
   });
 
   revalidatePath("/dashboard/estoque");
+  return {};
+}
+
+// ---------------------------------------------------------------------
+// Situação do carretel: abrir (lacrado → em uso) ou marcar como acabado
+// (zera o saldo e registra a saída). Pra "restaurar" um acabado, é só
+// ajustar o saldo: o banco volta ele pra "em uso" sozinho.
+// ---------------------------------------------------------------------
+export async function mudarSituacaoCarretel(filamentId: string, situacao: "em_uso" | "acabado"): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: atual } = await supabase
+    .from("filament_stock")
+    .select("current_grams, status")
+    .eq("id", filamentId)
+    .eq("account_id", user.id)
+    .maybeSingle();
+  if (!atual) return { error: "Carretel não encontrado." };
+
+  if (situacao === "em_uso") {
+    const { error } = await supabase.from("filament_stock").update({ status: "em_uso", aberto_em: new Date().toISOString() }).eq("id", filamentId);
+    if (error) return { error: error.message };
+  } else {
+    const resto = Number(atual.current_grams);
+    const { error } = await supabase.from("filament_stock").update({ current_grams: 0, status: "acabado" }).eq("id", filamentId);
+    if (error) return { error: error.message };
+    if (resto > 0) {
+      await supabase.from("filament_movements").insert({ filament_stock_id: filamentId, type: "ajuste_saida", grams: resto, note: "Marcado como acabado" });
+    }
+  }
+  revalidatePath("/dashboard/estoque");
+  revalidatePath("/dashboard/fila");
   return {};
 }

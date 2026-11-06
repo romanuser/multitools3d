@@ -1,5 +1,6 @@
 "use client";
 
+import { ordenarCarreteis, rotuloCarretel } from "@/lib/filament/rotulo";
 import { useMemo, useState } from "react";
 import { createQuoteRecord } from "@/lib/quotes/actions";
 import type { QuotePattern } from "@/lib/quotes/types";
@@ -7,7 +8,7 @@ import { calcPrice, DEFAULT_PRICE_PARAMS, type PriceParams } from "@/lib/quotes/
 import { savePricingParams } from "@/lib/quotes/pricing-actions";
 
 // Filamento do estoque (o preço do kg vem de lá) e cada cor usada na peça
-export type FilamentoEstoque = { id: string; material: string; color: string; color_hex: string | null; brand: string | null; cost_per_kg: number | null };
+export type FilamentoEstoque = { id: string; material: string; color: string; color_hex: string | null; brand: string | null; cost_per_kg: number | null; numero?: number | null; status?: string | null; current_grams?: number | null };
 type Cor = { key: number; filamentId: string; nome: string; precoKg: string; gramas: string };
 const novaCor = (key: number): Cor => ({ key, filamentId: "", nome: "PLA", precoKg: "99", gramas: "100" });
 
@@ -336,9 +337,9 @@ export function QuoteCalculator({
                       <span className="w-4 h-4 rounded-full border border-line shrink-0" style={{ background: f?.color_hex || "transparent" }} aria-hidden="true" />
                       <select value={c.filamentId} onChange={(e) => escolherDoEstoque(c.key, e.target.value)} className="input">
                         <option value="">Digitar à mão</option>
-                        {filaments.map((x) => (
+                        {ordenarCarreteis(filaments).map((x) => (
                           <option key={x.id} value={x.id}>
-                            {x.material} {x.color}{x.brand ? ` (${x.brand})` : ""} — {money(Number(x.cost_per_kg || 0))}/kg
+                            {rotuloCarretel(x, { gramas: false })} — {money(Number(x.cost_per_kg || 0))}/kg
                           </option>
                         ))}
                       </select>

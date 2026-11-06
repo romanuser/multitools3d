@@ -1,3 +1,4 @@
+import { COLUNAS_CARRETEL, ordenarCarreteis, rotuloCarretel } from "@/lib/filament/rotulo";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -80,7 +81,7 @@ export default async function LojaPage() {
 
   const [{ data: printers }, { data: filaments }] = await Promise.all([
     supabase.from("printers").select("id, name").eq("account_id", user.id),
-    supabase.from("filament_stock").select("id, material, color").eq("account_id", user.id),
+    supabase.from("filament_stock").select(COLUNAS_CARRETEL).eq("account_id", user.id).neq("status", "acabado"),
   ]);
 
   const { data: orders } = await supabase
@@ -169,7 +170,7 @@ export default async function LojaPage() {
           <ProductList
             products={productsWithFilaments}
             printers={printers ?? []}
-            filaments={(filaments ?? []).map((f) => ({ id: f.id, label: `${f.material} · ${f.color}` }))}
+            filaments={ordenarCarreteis(filaments ?? []).map((f) => ({ id: f.id, label: rotuloCarretel(f) }))}
             materials={[...new Set((filaments ?? []).map((f) => f.material))].sort()}
           />
         </section>

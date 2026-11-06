@@ -84,7 +84,14 @@ export function OverviewBoard({
   const activeJobByPrinter = new Map(jobs.filter((j) => j.status === "imprimindo").map((j) => [j.printer_id, j]));
   const failedJobs = jobs.filter((j) => j.status === "falha");
   const queuedCount = jobs.filter((j) => j.status === "fila").length;
-  const lowStockFilaments = filaments.filter((f) => f.current_grams <= f.low_stock_alert_g);
+  // estoque baixo pelo TOTAL do tipo (material + cor + marca): carretel aberto acabando com lacrados de reserva não é estoque baixo
+  const porTipo = new Map<string, { f: Filament; total: number; alerta: number }>();
+  for (const f of filaments) {
+    const k = [f.material, f.color, f.brand ?? ""].map((x) => String(x).trim().toLowerCase()).join("|");
+    const t = porTipo.get(k) ?? { f, total: 0, alerta: 0 };
+    t.total += Number(f.current_grams); t.alerta = Math.max(t.alerta, Number(f.low_stock_alert_g)); porTipo.set(k, t);
+  }
+  const lowStockFilaments = [...porTipo.values()].filter((t) => t.total <= t.alerta).map((t) => ({ ...t.f, current_grams: t.total }));
   const maintenancePrinters = printers.filter((p) => p.status === "manutencao");
 
   const hasAlerts = lowStockFilaments.length > 0 || maintenancePrinters.length > 0 || failedJobs.length > 0;
@@ -107,7 +114,7 @@ export function OverviewBoard({
             ))}
             {lowStockFilaments.map((f) => (
               <Alert key={f.id} href="/dashboard/estoque" tone="amber">
-                Estoque baixo: <strong>{f.material} · {f.color}</strong> ({f.current_grams}g restantes).
+                Estoque baixo: <strong>{f.material} · {f.color}{f.brand ? ` · ${f.brand}` : ""}</strong> ({f.current_grams}g no total).
               </Alert>
             ))}
           </div>

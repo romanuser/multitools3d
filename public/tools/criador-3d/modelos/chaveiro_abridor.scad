@@ -1,41 +1,59 @@
-// Chaveiro-emblema com abridor de anel de lata — modelo próprio do Multiferramenta 3D
-// Peças: "base" (cor 1: disco, argola e língua abridora) e "detalhes" (cor 2: emblema ou texto embutido no topo).
-// Abridor: a ponta fina entra embaixo do anel e levanta; a abertura engancha o anel pra puxar.
-diametro = 50;
+// Chaveiro abridor de lata no FORMATO DO SÍMBOLO enviado — modelo próprio do Multiferramenta 3D
+// Peças: "base" (cor 1: corpo no formato do símbolo + argola + ponta abridora) e "detalhes" (cor 2: desenho embutido no topo).
+// Abridor: na ponta, uma FENDA horizontal (tipo boca de pregador). A mandíbula de baixo, fina e chanfrada,
+// escorrega por baixo da tampinha; a ponta da tampinha entra na fenda e, girando o chaveiro, ela levanta.
+tamanho = 50;             // maior medida do símbolo (mm)
 espessura = 4;
-centro = "logo";          // logo | texto
-texto = "MEU TIME"; fonte = "Poppins:style=Bold"; texto_tam = 7;
+aro = 2;                  // borda lisa em volta do desenho
 logo = []; lw = 60; lh = 60;
-borda = 2;                // aro liso em volta do emblema
+silhueta = [];            // contorno de fora do símbolo (mesma escala do desenho)
+formato = "contorno";     // contorno | redondo
 furo = 5;                 // furo da argola
-lingua = 18;              // comprimento da língua abridora
+fenda_larg = 13;          // largura da fenda (a tampinha tem ~10–11 mm)
+fenda_alt = 1.2;          // altura da fenda
+fenda_fundo = 7;          // profundidade da fenda
 parte = "base";
-$fn = 120;
+$fn = 72;
 
-R = diametro / 2;
-RELEVO = 0.8;             // profundidade do emblema embutido
-LW = 16;                  // largura da língua
+RELEVO = 0.8;
+k = (tamanho - 2 * aro) / max(lw, lh);
+usa_contorno = formato == "contorno" && len(silhueta) > 0;
+module poligonos(ps) for (p = ps) polygon(points = p[0], paths = p[1]);
+module corpo2d() { if (usa_contorno) offset(r = aro) scale([k, k]) poligonos(silhueta); else circle(d = tamanho); }
+// altura do símbolo (pra posicionar argola e ponta)
+H = usa_contorno ? lh * k + 2 * aro : tamanho;
+W = usa_contorno ? lw * k + 2 * aro : tamanho;
 
-module argola2d() difference() { hull() { translate([0, R + furo / 2 + 1.5]) circle(d = furo + 5); translate([0, R - 4]) circle(d = furo + 5); } translate([0, R + furo / 2 + 1.5]) circle(d = furo); }
-module desenho2d() {
-  if (centro == "logo" && len(logo) > 0) let (k = (diametro - 2 * borda - 2) / max(lw, lh)) scale([k, k]) for (p = logo) polygon(points = p[0], paths = p[1]);
-  else if (centro == "texto" && len(texto) > 0)
-    resize([min(diametro - 2 * borda - 6, len(texto) * texto_tam * 0.8), 0], auto = true) text(texto, size = texto_tam, font = fonte, halign = "center", valign = "center");
+// argola: orelha no topo do símbolo
+module argola2d() difference() {
+  hull() { translate([0, H / 2 + furo / 2 + 1]) circle(d = furo + 5.5); translate([0, H / 2 - 5]) circle(d = furo + 5.5); }
+  translate([0, H / 2 + furo / 2 + 1]) circle(d = furo);
 }
-// língua: vai afinando de "espessura" (junto do disco) até 0,8 mm na ponta
+// ponta abridora: língua que sai de baixo do símbolo
+LINGUA_L = 16; LINGUA_W = fenda_larg + 7;
 module lingua3d() hull() {
-  translate([-LW / 2, -R - 1, 0]) cube([LW, 2, espessura]);
-  translate([-LW / 2 + 2, -R - lingua, 0]) cube([LW - 4, 0.8, 0.8]);
+  translate([-LINGUA_W / 2, -H / 2 + 4, 0]) cube([LINGUA_W, 1, espessura]);
+  translate([-LINGUA_W / 2 + 1, -H / 2 - LINGUA_L, 0]) cube([LINGUA_W - 2, 1, espessura]);
 }
-module abertura() translate([0, -R - 7.5, -1]) linear_extrude(espessura + 2) hull() { translate([-4.5, 0]) circle(d = 3.6); translate([4.5, 0]) circle(d = 3.6); }
+// fenda na ponta (aberta pra frente) + chanfro embaixo da mandíbula de baixo (escorrega por baixo da tampinha)
+z_fenda = 1.2;
+module fenda3d() {
+  translate([-fenda_larg / 2, -H / 2 - LINGUA_L - 1, z_fenda]) cube([fenda_larg, fenda_fundo + 1, fenda_alt]);
+  // entrada da fenda alargada (funil), pra tampinha achar o caminho
+  translate([0, -H / 2 - LINGUA_L - 0.01, z_fenda + fenda_alt / 2]) rotate([-90, 0, 0])
+    linear_extrude(2, scale = [1, 0.4]) square([fenda_larg + 2, fenda_alt * 2.4], center = true);
+  // chanfro da mandíbula de baixo: a ponta fica com ~0,4 mm
+  translate([-LINGUA_W, -H / 2 - LINGUA_L - 1, 0]) rotate([-atan((z_fenda - 0.4) / 5), 0, 0]) translate([0, 0, -10]) cube([2 * LINGUA_W, 6, 10]);
+}
+
+module desenho2d() intersection() { offset(r = -0.4) corpo2d(); scale([k, k]) poligonos(logo); }
+module detalhes() translate([0, 0, espessura - RELEVO]) linear_extrude(RELEVO) desenho2d();
+module recorte_desenho() translate([0, 0, espessura - RELEVO]) linear_extrude(RELEVO + 1) desenho2d();
 
 module corpo() difference() {
-  union() { linear_extrude(espessura) union() { circle(r = R); argola2d(); } lingua3d(); }
-  abertura();
+  union() { linear_extrude(espessura) union() { corpo2d(); argola2d(); } lingua3d(); }
+  fenda3d();
 }
-module desenho_limitado() intersection() { circle(r = R - borda); desenho2d(); }
-module detalhes() translate([0, 0, espessura - RELEVO]) linear_extrude(RELEVO) desenho_limitado();
-module recorte() translate([0, 0, espessura - RELEVO]) linear_extrude(RELEVO + 1) desenho_limitado();   // passa do topo: corta limpo
 
-if (parte == "base") difference() { corpo(); recorte(); }
+if (parte == "base") difference() { corpo(); recorte_desenho(); }
 else if (parte == "detalhes") detalhes();

@@ -76,15 +76,19 @@ export async function createPrintJobsForOrder(
   const needsColorLookup =
     products.some((p) => p.color_filament_material && p.color_filament_grams) ||
     [...partsByProduct.values()].some((list) => list.some((part) => part.color_material));
-  let filamentStock: { id: string; material: string; color: string }[] = [];
+  let filamentStock: { id: string; material: string; color: string; status: string | null; numero: number | null; current_grams: number | null }[] = [];
   if (needsColorLookup) {
-    const { data } = await client.from("filament_stock").select("id, material, color").eq("account_id", accountId);
+    const { data } = await client.from("filament_stock").select("id, material, color, status, numero, current_grams").eq("account_id", accountId).neq("status", "acabado");
     filamentStock = data ?? [];
   }
 
+  // carretel daquela cor: o que está EM USO primeiro (com saldo), depois o lacrado de menor número
   function findColorFilament(material: string, color: string) {
     const norm = (s: string) => s.trim().toLowerCase();
-    return filamentStock.find((f) => norm(f.material) === norm(material) && norm(f.color) === norm(color));
+    const ordem = (s: string | null) => (s === "em_uso" ? 0 : 1);
+    return filamentStock
+      .filter((f) => norm(f.material) === norm(material) && norm(f.color) === norm(color))
+      .sort((a, b) => ordem(a.status) - ordem(b.status) || (a.numero ?? 0) - (b.numero ?? 0))[0];
   }
 
   for (const item of items) {
