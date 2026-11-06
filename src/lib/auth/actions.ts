@@ -51,6 +51,12 @@ export async function signUp(_prevState: AuthState, formData: FormData): Promise
   redirect("/cadastro/confirme-seu-email");
 }
 
+// pra onde voltar depois do login (só caminhos do próprio site: nunca um endereço de fora)
+function voltaSegura(v: FormDataEntryValue | null) {
+  const s = String(v || "");
+  return s.startsWith("/") && !s.startsWith("//") && !s.startsWith("/\\") ? s : "/dashboard";
+}
+
 export async function signIn(_prevState: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
@@ -64,16 +70,17 @@ export async function signIn(_prevState: AuthState, formData: FormData): Promise
 
   if (error) return { error: traduzErro(error.message) };
 
-  redirect("/dashboard");
+  redirect(voltaSegura(formData.get("volta")));
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(formData?: FormData) {
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
+  const volta = voltaSegura(formData?.get("volta") ?? null);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${origin}/auth/callback` },
+    options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(volta)}` },
   });
 
   if (error || !data.url) {

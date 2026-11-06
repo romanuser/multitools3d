@@ -111,6 +111,7 @@ export function DashboardSidebar({
     { href: "/dashboard", label: "Ferramentas", icon: "grid" },
     { href: "/dashboard/painel", label: "Dashboard", icon: "panel" },
     { href: "/dashboard/guia", label: "Guia de uso", icon: "book" },
+    { href: "/comunidade", label: "Comunidade", icon: "support" },
   ];
 
   const manageItems: NavItem[] = [

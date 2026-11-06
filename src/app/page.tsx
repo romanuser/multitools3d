@@ -73,6 +73,9 @@ function Nav() {
           <Link href="/vitrine" className="transition-colors hover:text-ink">
             Ver lojas
           </Link>
+          <Link href="/comunidade" className="transition-colors hover:text-ink">
+            Comunidade
+          </Link>
           <a href="#planos" className="transition-colors hover:text-ink">
             Planos
           </a>

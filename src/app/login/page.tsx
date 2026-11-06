@@ -1,11 +1,21 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signIn, signInWithGoogle } from "@/lib/auth/actions";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [state, formAction, pending] = useActionState(signIn, undefined);
+  const volta = useSearchParams().get("volta") ?? "";   // ex.: voltar pra pergunta da comunidade
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-paper px-4">
@@ -14,6 +24,7 @@ export default function LoginPage() {
         <p className="text-sm text-ink-muted mb-6">Acesse o painel da sua ferramenta 3D.</p>
 
         <form action={signInWithGoogle}>
+          <input type="hidden" name="volta" value={volta} />
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-2 border border-line rounded-lg py-2.5 text-sm font-medium text-ink hover:bg-surface-raised transition mb-5"
@@ -30,6 +41,7 @@ export default function LoginPage() {
         </div>
 
         <form action={formAction} className="space-y-4">
+          <input type="hidden" name="volta" value={volta} />
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">E-mail</label>
             <input name="email" type="email" required className="input" />

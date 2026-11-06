@@ -338,4 +338,24 @@ export const MODELOS = [
       "Com contorno em outra cor é 1 troca de filamento só: o contorno embaixo e o nome por cima.",
       "Sem contorno, o Criador avisa se alguma letra (ou o pingo do i) ficar solta."],
   },
+
+  {
+    id: "torre_temperatura", nome: "Torre de temperatura", resumo: "Calibração: um andar por temperatura, com ponte e saliência. Descubra a temperatura ideal do filamento.", icone: "🌡️",
+    partes: [{ id: "torre", nome: "Torre", cor: "#e5e7eb" }],
+    campos: [
+      num("t_inicio", "Temperatura do primeiro andar (°C)", 230, 160, 320, 5, "O andar de baixo. PLA: 230 → 190 · PETG: 250 → 220 · ABS/ASA: 260 → 230."),
+      num("t_fim", "Temperatura do último andar (°C)", 190, 160, 320, 5),
+      num("passo", "Passo (°C)", 5, 1, 20, 1),
+    ],
+    dicas: ["Cada andar tem 10 mm. A base tem 1 mm: o 1º andar vai de 1 a 11 mm, o 2º de 11 a 21 mm, e assim por diante.",
+      "No Bambu Studio/Orca: clique com o direito na barra de camadas e adicione G-code personalizado na altura de cada andar com M104 S(temperatura).",
+      "Escolha o andar com a ponte mais lisa, a saliência sem rebarba e sem fiapos. Depois compartilhe o resultado na Central de Calibração!"],
+  },
+  {
+    id: "cubo_calibracao", nome: "Cubo de calibração 20 mm", resumo: "Calibração: meça X, Y e Z com o paquímetro e acerte dimensões e fluxo.", icone: "🧊",
+    partes: [{ id: "cubo", nome: "Cubo", cor: "#e5e7eb" }],
+    campos: [num("lado", "Lado (mm)", 20, 10, 40, 1)],
+    dicas: ["Imprima com 2 paredes e 15% de preenchimento. Meça cada eixo em 3 pontos e tire a média.",
+      "Se medir 19,8 mm em vez de 20: diferença de 1%. Em X/Y, ajuste a compensação de tamanho no fatiador; paredes grossas demais pedem fluxo menor."],
+  },
 ];

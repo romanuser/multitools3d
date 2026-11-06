@@ -63,7 +63,9 @@ export function FilamentList({ filaments }: { filaments: Filament[] }) {
                 <span className="w-6 h-6 rounded-full border border-line shrink-0" style={{ backgroundColor: f0.color_hex || "#8d919c" }} />
                 <div>
                   <p className="font-medium text-ink">{f0.material} · {f0.color}</p>
-                  <p className="text-xs text-ink-muted">{f0.brand || "sem marca"} · {money(Number(f0.cost_per_kg))}/kg</p>
+                  <p className="text-xs text-ink-muted">{f0.brand || "sem marca"} · {money(Number(f0.cost_per_kg))}/kg ·{" "}
+                    <a href={`/comunidade/calibracao?material=${encodeURIComponent(f0.material)}${f0.brand ? `&marca=${encodeURIComponent(f0.brand)}` : ""}`} className="text-amber hover:underline">perfis da comunidade</a>
+                  </p>
                 </div>
               </div>
               <div className="text-right shrink-0">

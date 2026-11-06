@@ -5,12 +5,15 @@ import { redirect } from "next/navigation";
 export const metadata = { title: "Criador 3D" };
 
 // Criador paramétrico: modelos próprios gerados no navegador com OpenSCAD.
-export default async function Criador3DPage() {
+export default async function Criador3DPage({ searchParams }: { searchParams: Promise<{ modelo?: string }> }) {
+  // atalho: /dashboard/criador-3d?modelo=torre_temperatura abre direto no modelo
+  const { modelo } = await searchParams;
+  const atalho = modelo && /^[a-z0-9_]{2,40}$/.test(modelo) ? `?modelo=${modelo}` : "";
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(`/login?volta=${encodeURIComponent(`/dashboard/criador-3d${atalho}`)}`);
 
   return (
     <main className="min-h-screen px-4 md:px-6 py-8 flex flex-col">
@@ -20,12 +23,12 @@ export default async function Criador3DPage() {
         </Link>
         <h1 className="font-display text-2xl font-semibold tracking-tight text-ink mt-2">Criador 3D</h1>
         <p className="text-sm text-ink-muted">
-          21 modelos: nome em 3D com letras coladas, porta-lata (473, 350 e 269 ml), tampa giratória de lata, chaveiro abridor, litofanias, medalha, troféu, crachá, placa Pix, letreiro LED, polias, suportes, tampas e mais. Baixe em STL ou 3MF multicor.
+          23 modelos: nome em 3D com letras coladas, torre de temperatura e cubo de calibração, porta-lata (473, 350 e 269 ml), tampa giratória de lata, chaveiro abridor, litofanias, medalha, troféu, crachá, placa Pix, letreiro LED, polias, suportes, tampas e mais. Baixe em STL ou 3MF multicor.
         </p>
       </div>
       <div className="max-w-7xl mx-auto w-full flex-1 rounded-2xl overflow-hidden border border-line" style={{ minHeight: "85vh" }}>
         <iframe
-          src="/tools/criador-3d/index.html"
+          src={`/tools/criador-3d/index.html${atalho}`}
           title="Criador 3D paramétrico"
           allow="fullscreen"
           className="w-full h-full"

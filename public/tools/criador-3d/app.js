@@ -67,7 +67,8 @@ function desenharPrevia() {
 }
 
 // ---------- estado ----------
-let modelo = MODELOS[0];
+// atalho: ?modelo=torre_temperatura abre direto naquele modelo (ex.: links da Central de Calibração)
+let modelo = MODELOS.find((m) => m.id === new URLSearchParams(location.search).get("modelo")) || MODELOS[0];
 let resultado = null;          // [{ parte, nome, cor, tri, dy }]
 const cores = {};              // cor escolhida por parte
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
