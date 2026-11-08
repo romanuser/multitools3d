@@ -77,19 +77,24 @@ let pedido = 0;
 let statusTimer = 0;
 function status(msg, erro = false) { clearTimeout(statusTimer); const s = $("status"); s.textContent = msg; s.className = "status" + (erro ? " erro" : ""); s.style.display = msg ? "" : "none"; }
 
+// exemplo de imagem do modelo (ex.: escudo no porta-lata); troca se o que está carregado é o exemplo de outro modelo.
+// Usado no clique e também na abertura direta (?modelo=…), que não passa pelo clique.
+async function carregarExemplo() {
+  const ci = modelo.campos.find((c) => c.tipo === "imagem");
+  if (!ci) return;
+  const exemplo = modelo.exemplo?.[ci.modo] || EXEMPLO[ci.modo];
+  if (!imagens[ci.modo] || (imagens[ci.modo].exemplo && imagens[ci.modo].exemplo !== exemplo)) {
+    try { await carregarImagem(exemplo, ci.modo); if (imagens[ci.modo]) imagens[ci.modo].exemplo = exemplo; } catch { /* segue sem */ }
+  }
+}
+
 // ---------- lista de modelos e formulário ----------
 function montarModelos() {
   $("modelos").replaceChildren(...MODELOS.map((m) => {
     const b = el("button", { type: "button", className: "modelo" }, el("span", { className: "ic", textContent: m.icone }), el("b", { textContent: m.nome }), el("small", { textContent: m.resumo }));
     b.setAttribute("aria-pressed", m === modelo); b.onclick = async () => {
       modelo = m; resultado = null; grupo.clear(); $("barra").replaceChildren(); montarModelos(); montarForm();
-      const ci = m.campos.find((c) => c.tipo === "imagem");
-      // exemplo do próprio modelo (ex.: escudo no porta-lata); troca se o que está carregado é o exemplo de outro modelo
-      const exemplo = modelo.exemplo?.[ci?.modo] || EXEMPLO[ci?.modo];
-      if (ci && (!imagens[ci.modo] || (imagens[ci.modo].exemplo && imagens[ci.modo].exemplo !== exemplo))) {
-        try { await carregarImagem(exemplo, ci.modo); if (imagens[ci.modo]) imagens[ci.modo].exemplo = exemplo; } catch { /* segue sem */ }
-      }
-      desenharPrevia(); gerar();
+      await carregarExemplo(); desenharPrevia(); gerar();
     };
     return b;
   }));
@@ -212,6 +217,13 @@ function prepararParametros(v) {
     Object.assign(p, T); p.altura = (T.altura || 150) + Number(v.ajuste_altura || 0);
     for (const k of ["cor_borda", "cor_f1", "cor_f2", "cor_f3"]) p[k] = Number(v[k] || 2);
     delete p.tamanho; delete p.ajuste_altura;
+  }
+  if (modelo.id === "caneca_chopp") {
+    // capacidade: diâmetro interno, faixas e emblema que cabem em cada tamanho (a altura sai da capacidade)
+    const T = { "300": { diametro_interno: 70, faixa_alt: 9, faixas_baixo: 2, emblema_d: 50 }, "400": { diametro_interno: 74, faixa_alt: 10, faixas_baixo: 3, emblema_d: 56 },
+                "500": { diametro_interno: 78, faixa_alt: 12, faixas_baixo: 3, emblema_d: 60 }, "600": { diametro_interno: 80, faixa_alt: 12, faixas_baixo: 3, emblema_d: 69 } }[v.capacidade] || {};
+    Object.assign(p, T); p.capacidade = Number(v.capacidade || 500);
+    for (const k of ["cor_borda", "cor_f1", "cor_f2", "cor_f3"]) p[k] = Number(v[k] || 2);
   }
   if (modelo.logo === "opcional") {
     const usa = p.centro === "logo" || p.topo === "logo";
@@ -368,4 +380,5 @@ function montarBarra() {
 
 let rolarDepois = false;   // no celular, depois de clicar em Gerar, mostra o modelo
 $("gerar").onclick = () => { rolarDepois = innerWidth < 860; gerar(); };
-montarModelos(); montarForm(); gerar();
+montarModelos(); montarForm();
+carregarExemplo().then(() => { desenharPrevia(); gerar(); });
