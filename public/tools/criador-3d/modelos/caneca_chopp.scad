@@ -68,21 +68,39 @@ module letras_recorte(f) intersection() { anel(f[0], R - PROF, R + f[4] + 1, fai
 
 // --- alça inclinada: braços sobem indo pra fora, tudo arredondado ---
 // três barras (braço de cima, pegada, braço de baixo), cada uma = envoltório de 4 esferas (bordas redondas)
-alca_t = 12; alca_w = 22; alca_d = 42;      // espessura, largura e quanto sai da caneca (mais robusta: caneca cheia pesa)
+alca_t = 13; alca_w = 24; alca_d = 46;      // espessura, largura e quanto sai da caneca (cabe a mão: 4 dedos)
 sobe_cima = 8; sobe_baixo = 10;             // inclinação dos braços
-alca_v1 = z_meio1 - 2 - sobe_cima;          // fixação de cima (o braço sobe até z_meio1 - 2)
-alca_v0 = z_meio0 + 3;                      // fixação de baixo
+// caneca: a alça vai quase de ponta a ponta — de cima (logo abaixo da borda) até logo acima do pé.
+// Onde ela cruza uma faixa colorida, aquele trecho sai na cor da faixa (cada camada continua com uma cor só).
+alca_v1 = altura - 3 - sobe_cima;           // fixação de cima (o braço sobe até 3 mm abaixo da borda)
+alca_v0 = (nb > 0 ? faixa_alt : fundo) + 3; // fixação de baixo: logo acima do pé
 module alca2d() {                            // perfil de lado: u = pra fora do copo, v = altura
   A1 = [0, alca_v1 - alca_t / 2];   A2 = [alca_d - alca_t / 2, alca_v1 - alca_t / 2 + sobe_cima];
   B1 = [0, alca_v0 + alca_t / 2];   B2 = [alca_d - alca_t / 2, alca_v0 + alca_t / 2 + sobe_baixo];
-  union() for (seg = [[A1, A2], [A2, B2], [B2, B1]]) hull() for (q = seg) translate(q) circle(d = alca_t, $fn = 40);
-}
-arred = 2.5;                                  // arredondamento das bordas da alça
-module alca3d() if (alca && alca_v1 - alca_v0 > 40) rotate([0, 0, ALCA_ANG]) translate([R - 3, 0, 0]) rotate([90, 0, 0])
-  minkowski() {
-    linear_extrude(alca_w - 2 * arred, center = true) offset(delta = -arred) alca2d();
-    sphere(r = arred, $fn = 16);
+  // pegada em curva suave pra fora (formato D): 6 trechos numa curva entre A2 e B2.
+  // O contorno é "limpo" (fecha e abre 0,4 mm) pra o arredondamento 3D rodar rápido.
+  M = [alca_d - alca_t / 2 + 10, (A2[1] + B2[1]) / 2];
+  curva_d = [for (i = [0 : 6]) let (t = i / 6) (1 - t) * (1 - t) * A2 + 2 * (1 - t) * t * M + t * t * B2];
+  offset(r = 0.4) offset(r = -0.4) union() {
+    for (seg = [[A1, A2], [B2, B1]]) hull() for (q = seg) translate(q) circle(d = alca_t, $fn = 32);
+    for (i = [0 : 5]) hull() { translate(curva_d[i]) circle(d = alca_t, $fn = 32); translate(curva_d[i + 1]) circle(d = alca_t, $fn = 32); }
   }
+}
+arred = 2.4;                                  // arredondamento das bordas da alça
+// Alça em FATIAS: a do meio com o contorno inteiro e as das bordas encolhendo num quarto de círculo.
+// Dá a borda arredondada só com operações simples (sem minkowski): rápido e estável em qualquer tamanho.
+DEGRAUS = 4;
+function recuo(k) = arred - sqrt(arred * arred - pow((k + 0.5) * arred / DEGRAUS, 2));
+module alca3d() if (alca && alca_v1 - alca_v0 > 40) rotate([0, 0, ALCA_ANG]) translate([R - 3, 0, 0]) rotate([90, 0, 0]) {
+  meio = alca_w / 2 - arred;
+  union() {
+    translate([0, 0, -meio]) linear_extrude(2 * meio) alca2d();
+    for (k = [0 : DEGRAUS - 1]) for (lado = [-1, 1]) {
+      z0 = meio + k * arred / DEGRAUS;
+      translate([0, 0, lado > 0 ? z0 - 0.01 : -z0 - arred / DEGRAUS + 0.01]) linear_extrude(arred / DEGRAUS) offset(delta = -recuo(k)) alca2d();
+    }
+  }
+}
 
 // --- textura: símbolos pequenos em relevo (0,5 mm) no copo inteiro, acompanhando a curva ---
 passo_ang = (textura_tam + 7) / R * 180 / PI;                       // espaço entre símbolos na volta
@@ -125,7 +143,7 @@ module faixa_inteira(f) difference() {
 }
 // escrita em relevo: 0,6 mm pra fora, entrando 0,3 mm na faixa (funde com ela)
 module letras_relevo(f) intersection() { anel(f[0], R + f[4] - 0.3, R + f[4] + RELEVO_TXT, faixa_alt); letras(f); }
-module zona(f) translate([0, 0, f[0]]) cylinder(r = R + 10, h = faixa_alt);
+module zona(f) translate([0, 0, f[0]]) cylinder(r = R + alca_d + 20, h = faixa_alt);   // cobre a alça também
 
 module principal() union() {
   difference() {
@@ -135,7 +153,10 @@ module principal() union() {
   for (f = faixas) if (f[1] == 1) union() { faixa_inteira(f); letras_relevo(f); }
 }
 module faixas_cor2() union() {
-  for (f = faixas) if (f[1] == 2) union() { faixa_inteira(f); letras_relevo(f); }
+  for (f = faixas) if (f[1] == 2) union() {
+    faixa_inteira(f); letras_relevo(f);
+    difference() { intersection() { alca3d(); zona(f); } cavidade(); }        // listra da alça na cor da faixa
+  }
 }
 
 // --- emblema (deitado, separado) ---
