@@ -32,8 +32,12 @@ self.onmessage = async ({ data }) => {
       let uses = "";
       for (const [f, bytes] of files) { inst.FS.writeFile(`/fonts/${f}`, bytes); uses += `use </fonts/${f}>\n`; }
       for (const a of arquivos) inst.FS.writeFile("/" + a.nome, new Uint8Array(a.dados));
-      inst.FS.writeFile("/m.scad", uses + src);
-      const defs = Object.entries({ ...params, parte }).flatMap(([k, v]) => ["-D", `${k}=${lit(v)}`]);
+      // parâmetros grandes (polígonos de logo com milhares de pontos) vão no fim do arquivo: na linha de comando
+      // o motor trava. No OpenSCAD a última atribuição vale, igual ao -D. Os pequenos seguem no -D.
+      const todos = Object.entries({ ...params, parte }).map(([k, v]) => [k, lit(v)]);
+      const grandes = todos.filter(([, v]) => v.length > 2000), pequenos = todos.filter(([, v]) => v.length <= 2000);
+      inst.FS.writeFile("/m.scad", uses + src + "\n" + grandes.map(([k, v]) => `${k} = ${v};`).join("\n") + "\n");
+      const defs = pequenos.flatMap(([k, v]) => ["-D", `${k}=${v}`]);
       const t = performance.now();
       const rc = inst.callMain(["/m.scad", ...defs, "--enable=textmetrics", "--backend=manifold", "--export-format=binstl", "-o", "/o.stl"]);
       let bytes = null;

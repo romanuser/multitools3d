@@ -3,7 +3,7 @@ import { OrbitControls } from "./vendor/OrbitControls.js";
 import { FONTES, MODELOS } from "./models.js";
 import { stlTriangles, make3mf } from "./export3d.js";
 import { pixPayload } from "./pix.js";
-import { vetorizarLogo, vetorizarEmblema } from "./logo.js";
+import { vetorizarLogo, vetorizarEmblema, vetorizarCores } from "./logo.js";
 import { gerarLitofania, gerarCilindro, gerarLitofaniaForma } from "./litofania.js";
 
 const $ = (id) => document.getElementById(id);
@@ -39,12 +39,13 @@ function carregarImagem(src, modo) {
   return new Promise((ok, erro) => {
     const im = new Image(); im.crossOrigin = "anonymous";
     im.onload = () => {
-      const max = modo === "foto" ? 520 : 360; const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+      // letreiro: mais resolução pras letras pequenas
+      const max = modo === "foto" ? 520 : modelo.resImagem || 360; const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
       const w = Math.max(1, Math.round(im.naturalWidth * k)), h = Math.max(1, Math.round(im.naturalHeight * k));
       const c = el("canvas", { width: w, height: h }); const g = c.getContext("2d"); g.drawImage(im, 0, 0, w, h);
       const d = g.getImageData(0, 0, w, h).data; const gray = new Float32Array(w * h), alpha = new Float32Array(w * h);
       for (let i = 0; i < w * h; i++) { const a = d[i * 4 + 3] / 255; alpha[i] = a; gray[i] = a < 0.5 ? 1 : (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255; }
-      imagens[modo] = { gray, alpha, w, h }; ok(imagens[modo]);
+      imagens[modo] = { gray, alpha, w, h, rgb: d, max }; ok(imagens[modo]);
     };
     im.onerror = () => erro(new Error("Não consegui abrir essa imagem."));
     im.src = src;
@@ -163,6 +164,7 @@ function lerValores() {
 // partes que existem com essas opções (ex.: pé só na placa de balcão)
 const partesAtivas = (p) => modelo.partes.filter((pt) => !modelo.partesSe?.[pt.id] || modelo.partesSe[pt.id](p));
 let paramsAtual = {}, aviso = "";
+const corAuto = {};   // última cor detectada automaticamente em cada peça (letreiro)
 const separadasAgora = () => !!(modelo.separadas || modelo.separaPartes);
 // essa parte é impressa separada? (ex.: na placa Pix só o pé; no letreiro, a tampa)
 const parteSolta = (pid, i) => i > 0 && (!!modelo.grupos?.[pid] || (modelo.separaPartes ? modelo.separaPartes.includes(pid) : !!modelo.separadas));
@@ -225,7 +227,21 @@ function prepararParametros(v) {
     Object.assign(p, T); p.capacidade = Number(v.capacidade || 500);
     for (const k of ["cor_borda", "cor_f1", "cor_f2", "cor_f3"]) p[k] = Number(v[k] || 2);
   }
-  if (modelo.id === "letreiro_logo") p.mesa = Number(v.mesa || 180);
+  if (modelo.logo === "cores") {
+    // letreiro: separa o logo do fundo e as cores do logo; cada cor vira uma peça da frente (com a cor detectada)
+    const img = imagens.logo; if (!img) throw new Error("Envie o logo.");
+    const r = vetorizarCores(window.d3.contours, img.rgb, img.alpha, img.w, img.h, { cores: Number(v.cores || 2), tolerancia: v.tolerancia ?? 0.2, unir: v.unir ?? 4, largura: 60 });
+    if (!r || !r.regioes.length) throw new Error("Não achei o logo na imagem: aumente a tolerância ou use um PNG com fundo transparente.");
+    ["r1", "r2", "r3"].forEach((k, i) => { p[k] = r.regioes[i]?.poligonos ?? []; });
+    // cor detectada vira a cor da peça (no preview e no 3MF), a não ser que a pessoa tenha trocado à mão
+    r.regioes.forEach((rg, i) => {
+      const chave = modelo.id + `cor${i + 1}`;
+      if (cores[chave] === undefined || cores[chave] === corAuto[chave] || cores[chave] === modelo.partes.find((x) => x.id === `cor${i + 1}`)?.cor) { cores[chave] = rg.cor; corAuto[chave] = rg.cor; }
+    });
+    p.silhueta = r.silhueta; p.lw = 60; p.lh = +r.altura.toFixed(2); p.ncores = r.regioes.length;
+    p.mesa = Number(v.mesa || 180);
+    delete p.cores; delete p.tolerancia;
+  }
   if (modelo.logo === "opcional") {
     const usa = p.centro === "logo" || p.topo === "logo";
     if (usa) {
@@ -236,20 +252,13 @@ function prepararParametros(v) {
     }
     delete p.limiar; delete p.inverter;
   }
-  if (modelo.logo && modelo.logo !== "opcional") {
+  if (modelo.logo && modelo.logo !== "opcional" && modelo.logo !== "cores") {
     const img = imagens.logo; if (!img) throw new Error("Envie um logo ou desenho.");
     // emblema (porta-lata): desenho + silhueta do escudo na mesma escala (o formato vem da própria imagem)
     const r = modelo.emblema
       ? vetorizarEmblema(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: 60 })
       : vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: v.largura ?? 60 });
     if (modelo.emblema && r) p.silhueta = r.silhueta;
-    // letreiro: ignora pedacinhos soltos do contorno (til, pingos) que virariam tubinhos frágeis
-    if (modelo.id === "letreiro_logo" && r?.silhueta?.length) {
-      const area = (pts) => Math.abs(pts.reduce((s, [x, y], i) => { const [u, w] = pts[(i + 1) % pts.length]; return s + x * w - u * y; }, 0) / 2);
-      const areas = r.silhueta.map((pl) => area(pl[1][0].map((k) => pl[0][k])));
-      const maior = Math.max(...areas);
-      p.silhueta = r.silhueta.filter((_, i) => areas[i] >= maior * 0.03);
-    }
     if (!r || !r.poligonos.length) throw new Error("Não achei o desenho na imagem: mexa no limiar ou marque “inverter”.");
     if (modelo.logo === "silhueta") p.silhueta = r.poligonos.map(([pts, paths]) => { const anel = paths[0].map((i) => pts[i]); return [anel, [anel.map((_, i) => i)]]; });
     else p.logo = r.poligonos;
@@ -340,10 +349,11 @@ function receber(data) {
   desenhar(); enquadrar(); montarBarra();
   if (rolarDepois) { rolarDepois = false; view.scrollIntoView({ behavior: "smooth", block: "start" }); }
   if (modelo.id === "letreiro_logo") {
-    const r = resultado.find((x) => x.parte === "corpo");
-    const n = r ? contarPedacos(r.tri) : 1;
-    if (paramsAtual.dividir) aviso += n > 1 ? ` · dividido em ${n} placas` : " · cabe inteiro na mesa";
-    else if (n > 1) aviso += ` · atenção: a caixa saiu em ${n} partes — use placa/oval ou aumente o "unir"`;
+    // mesma conta do modelo: quantas placas cabem na mesa
+    const P = paramsAtual, L = Number(P.largura_total), H = (P.lh / P.lw) * L, folga = P.formato === "contorno" ? 2 * (2 + 5) : 2 * Number(P.margem);
+    const passo = Number(P.mesa) - 22, nx = Math.max(1, Math.ceil((L + folga) / passo)), ny = Math.max(1, Math.ceil((H + folga) / passo));
+    aviso += P.dividir ? (nx * ny > 1 ? ` · dividido em ${nx * ny} placas (${nx} × ${ny})` : " · cabe inteiro na mesa")
+                       : (Math.max(L, H) + folga > Number(P.mesa) ? ` · atenção: não cabe na mesa de ${P.mesa} mm — ligue "Dividir em placas"` : "");
   }
   if (modelo.checarPedacos && !(Number(paramsAtual.borda) > 0)) {
     const r = resultado.find((x) => x.parte === "letras");
