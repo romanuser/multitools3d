@@ -225,6 +225,7 @@ function prepararParametros(v) {
     Object.assign(p, T); p.capacidade = Number(v.capacidade || 500);
     for (const k of ["cor_borda", "cor_f1", "cor_f2", "cor_f3"]) p[k] = Number(v[k] || 2);
   }
+  if (modelo.id === "letreiro_logo") p.mesa = Number(v.mesa || 180);
   if (modelo.logo === "opcional") {
     const usa = p.centro === "logo" || p.topo === "logo";
     if (usa) {
@@ -242,6 +243,13 @@ function prepararParametros(v) {
       ? vetorizarEmblema(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: 60 })
       : vetorizarLogo(window.d3.contours, img.gray, img.alpha, img.w, img.h, { limiar: v.limiar, inverter: v.inverter, largura: v.largura ?? 60 });
     if (modelo.emblema && r) p.silhueta = r.silhueta;
+    // letreiro: ignora pedacinhos soltos do contorno (til, pingos) que virariam tubinhos frágeis
+    if (modelo.id === "letreiro_logo" && r?.silhueta?.length) {
+      const area = (pts) => Math.abs(pts.reduce((s, [x, y], i) => { const [u, w] = pts[(i + 1) % pts.length]; return s + x * w - u * y; }, 0) / 2);
+      const areas = r.silhueta.map((pl) => area(pl[1][0].map((k) => pl[0][k])));
+      const maior = Math.max(...areas);
+      p.silhueta = r.silhueta.filter((_, i) => areas[i] >= maior * 0.03);
+    }
     if (!r || !r.poligonos.length) throw new Error("Não achei o desenho na imagem: mexa no limiar ou marque “inverter”.");
     if (modelo.logo === "silhueta") p.silhueta = r.poligonos.map(([pts, paths]) => { const anel = paths[0].map((i) => pts[i]); return [anel, [anel.map((_, i) => i)]]; });
     else p.logo = r.poligonos;
@@ -331,12 +339,18 @@ function receber(data) {
   });
   desenhar(); enquadrar(); montarBarra();
   if (rolarDepois) { rolarDepois = false; view.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  if (modelo.id === "letreiro_logo") {
+    const r = resultado.find((x) => x.parte === "corpo");
+    const n = r ? contarPedacos(r.tri) : 1;
+    if (paramsAtual.dividir) aviso += n > 1 ? ` · dividido em ${n} placas` : " · cabe inteiro na mesa";
+    else if (n > 1) aviso += ` · atenção: a caixa saiu em ${n} partes — use placa/oval ou aumente o "unir"`;
+  }
   if (modelo.checarPedacos && !(Number(paramsAtual.borda) > 0)) {
     const r = resultado.find((x) => x.parte === "letras");
     const n = r ? contarPedacos(r.tri) : 1;
     if (n > 1) aviso += ` · atenção: o nome saiu em ${n} pedaços — use contorno, aumente o aperto ou ligue a barra`;
   }
-  status(`Pronto em ${(data.partes.reduce((s, p) => s + p.ms, 0) / 1000).toFixed(1).replace(".", ",")} s · arraste pra girar${aviso}`, !!aviso);
+  status(`Pronto em ${(data.partes.reduce((s, p) => s + p.ms, 0) / 1000).toFixed(1).replace(".", ",")} s · arraste pra girar${aviso}`, aviso.includes("atenção"));
   if (!aviso) statusTimer = setTimeout(() => status(""), 3500);      // aviso (ex.: QR pequeno) fica na tela
 }
 worker.onerror = (e) => { $("gerar").disabled = false; status("Erro no motor 3D: " + (e.message || "seu navegador pode não ser compatível"), true); };

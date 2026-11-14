@@ -43,7 +43,7 @@ export const manageTools: Tool[] = [
 export const createTools: Tool[] = [
   {
     title: "Criador 3D",
-    description: "Caneca de chopp, porta-lata, nome em 3D, tampa de lata, chaveiro abridor, peças de calibração e mais: 24 modelos prontos pra imprimir.",
+    description: "Letreiro LED do logo, caneca de chopp, porta-lata, nome em 3D, tampa de lata, chaveiro abridor e mais: 25 modelos prontos pra imprimir.",
     href: "/dashboard/criador-3d",
     icon: "star",
   },
