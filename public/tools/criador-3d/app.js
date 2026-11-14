@@ -197,6 +197,36 @@ function contarPedacos(tri) {
   return raizes.size;
 }
 
+// Letreiro dividido: cada placa vira um objeto próprio no 3MF ("Caixa A1", "Frente A1" com as cores juntas),
+// pra o "Organizar" do fatiador mandar cada placa pra uma mesa. A grade é a mesma conta do modelo (.scad).
+function separarPlacas(partes) {
+  const P = paramsAtual; if (!P.dividir) return partes;
+  const L = Number(P.largura_total), H = (P.lh / P.lw) * L;
+  const BW = P.formato === "contorno" ? L + 2 * (2 + 5) : L + 2 * Number(P.margem);
+  const BH = P.formato === "contorno" ? H + 2 * (2 + 5) : H + 2 * Number(P.margem);
+  const passo = Number(P.mesa) - 2 * 6 - 10, nx = Math.max(1, Math.ceil(BW / passo)), ny = Math.max(1, Math.ceil(BH / passo));
+  if (nx * ny === 1) return partes;
+  const GAP = 14, cw = BW / nx, ch = BH / ny;
+  // divisa entre a coluna i-1 e a i: no meio do vão de 14 mm entre as placas (os encaixes avançam só 6 mm)
+  const col = (x) => { for (let i = nx - 1; i > 0; i--) if (x >= -BW / 2 + i * cw + (i - 1) * GAP + GAP / 2) return i; return 0; };
+  const lin = (y) => { for (let j = ny - 1; j > 0; j--) if (y >= -BH / 2 + j * ch + (j - 1) * GAP + GAP / 2) return j; return 0; };
+  const nomePlaca = (i, j) => `${"ABCDEFGHIJ"[ny - 1 - j]}${i + 1}`;          // linha A = a de cima (igual à gravação)
+  const out = [];
+  for (const p of partes) {
+    const baldes = new Map();
+    for (let t = 0; t < p.tri.length; t += 9) {
+      const cx = (p.tri[t] + p.tri[t + 3] + p.tri[t + 6]) / 3, cy = (p.tri[t + 1] + p.tri[t + 4] + p.tri[t + 7]) / 3;
+      const k = nomePlaca(col(cx), lin(cy)); if (!baldes.has(k)) baldes.set(k, []); baldes.get(k).push(t);
+    }
+    for (const [k, lista] of [...baldes].sort()) {
+      const tri = new Float32Array(lista.length * 9); lista.forEach((t, n) => tri.set(p.tri.subarray(t, t + 9), n * 9));
+      const caixa = !p.grupo;
+      out.push({ ...p, tri, nome: caixa ? `Caixa ${k}` : `${p.nome} ${k}`, grupo: caixa ? undefined : `Frente ${k}`, solta: true });
+    }
+  }
+  return out;
+}
+
 // ---------- gerar ----------
 function prepararParametros(v) {
   const f = FONTES.find((x) => x.nome === v.fonte) || FONTES[0];
@@ -398,7 +428,10 @@ function montarBarra() {
     return el("span", { className: "parte" }, cor, r.nome, stl);
   });
   const b3 = el("button", { type: "button", className: "btn", textContent: "Baixar 3MF (multicor)", style: "width:auto;padding:10px 18px" });
-  b3.onclick = () => baixar(make3mf(resultado.map((r, i) => ({ nome: r.nome, cor: cores[modelo.id + r.parte], tri: r.tri, dy: r.dy, grupo: r.grupo, solta: r.solta || (i === 0 && !!modelo.separadas && !modelo.separaPartes) }))), `${nomeArquivo()}.3mf`);
+  b3.onclick = () => {
+    const partes = resultado.map((r, i) => ({ nome: r.nome, cor: cores[modelo.id + r.parte], tri: r.tri, dy: r.dy, grupo: r.grupo, solta: r.solta || (i === 0 && !!modelo.separadas && !modelo.separaPartes) }));
+    baixar(make3mf(modelo.id === "letreiro_logo" ? separarPlacas(partes) : partes), `${nomeArquivo()}.3mf`);
+  };
   $("barra").replaceChildren(...itens, el("span", { className: "esp" }), b3);
 }
 
